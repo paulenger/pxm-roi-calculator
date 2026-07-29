@@ -51,6 +51,18 @@ button { color: inherit; }
   font-size: 18px;
 }
 .prototype { color: var(--muted); font-size: 11px; letter-spacing: .16em; }
+.top-actions { display: flex; align-items: center; gap: 18px; }
+.top-actions a {
+  color: #dbe2ee;
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(18, 24, 39, .75);
+}
+.top-actions a:hover { border-color: var(--cyan); color: white; }
 
 .hero {
   max-width: 1450px;

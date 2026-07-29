@@ -209,7 +209,16 @@ export default function Home() {
           <span className="mark">P</span>
           <span>PATTERN PXM</span>
         </div>
-        <span className="prototype">VALUE MODEL · V1</span>
+        <div className="top-actions">
+          <a
+            href="/PXM_ROI_Calculator_User_Guide.pdf"
+            target="_blank"
+            rel="noreferrer"
+          >
+            User guide (PDF)
+          </a>
+          <span className="prototype">VALUE MODEL · V1</span>
+        </div>
       </header>
 
       <section className="hero">
