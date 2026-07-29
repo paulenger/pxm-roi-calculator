@@ -1,13 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  calculateCreativeProduction,
+  type CreativeTier,
+  type SellerType,
+} from "@/lib/creative-cost-model";
 
 type Inputs = {
-  images: number;
-  traditionalImageCost: number;
-  pxmImageCost: number;
-  includeImageLabor: boolean;
-  imageMinutesSaved: number;
+  currentAnnualCreativeSpend: number;
+  asinCount: number;
+  conceptCount: number;
+  aiImagesPerAsin: number;
+  annualProjects: number;
+  sellerType: SellerType;
+  creativeTier: CreativeTier;
   products: number;
   updates: number;
   updateMinutes: number;
@@ -24,11 +31,13 @@ type Inputs = {
 };
 
 const initial: Inputs = {
-  images: 1200,
-  traditionalImageCost: 150,
-  pxmImageCost: 35,
-  includeImageLabor: false,
-  imageMinutesSaved: 45,
+  currentAnnualCreativeSpend: 0,
+  asinCount: 1,
+  conceptCount: 1,
+  aiImagesPerAsin: 15,
+  annualProjects: 1,
+  sellerType: "1P",
+  creativeTier: "creative",
   products: 5000,
   updates: 2,
   updateMinutes: 30,
@@ -113,14 +122,18 @@ export default function Home() {
     setInputs((current) => ({ ...current, [key]: value }));
 
   const result = useMemo(() => {
+    const creativeModel = calculateCreativeProduction({
+      asinCount: inputs.asinCount,
+      conceptCount: inputs.conceptCount,
+      aiImagesPerAsin: inputs.aiImagesPerAsin,
+      sellerType: inputs.sellerType,
+      tier: inputs.creativeTier,
+    });
+    const annualCreativeCost =
+      creativeModel.projectCost * Math.max(1, inputs.annualProjects);
     const imageProduction =
-      inputs.images *
-      Math.max(0, inputs.traditionalImageCost - inputs.pxmImageCost) *
+      Math.max(0, inputs.currentAnnualCreativeSpend - annualCreativeCost) *
       factor;
-    const imageHours = inputs.includeImageLabor
-      ? (inputs.images * inputs.imageMinutesSaved * factor) / 60
-      : 0;
-    const imageLabor = imageHours * inputs.hourlyRate;
     const contentHours =
       (inputs.products *
         inputs.updates *
@@ -138,18 +151,20 @@ export default function Home() {
       (inputs.grossMargin / 100) *
       (inputs.attribution / 100) *
       factor;
-    const gross = imageProduction + imageLabor + contentOps + assetOps + revenue;
+    const gross = imageProduction + contentOps + assetOps + revenue;
     const yearOneCost = inputs.annualPXM + inputs.implementation;
     const net = gross - yearOneCost;
     const roi = yearOneCost > 0 ? (net / yearOneCost) * 100 : 0;
     const payback = gross > 0 ? (yearOneCost / gross) * 12 : 0;
-    const hours = imageHours + contentHours + assetHours;
+    const hours = contentHours + assetHours;
     const threeYear =
       gross * 3 - inputs.annualPXM * 3 - inputs.implementation;
 
     return {
       imageProduction,
-      imageLabor,
+      creativeProjectCost: creativeModel.projectCost,
+      creativeProjectHours: creativeModel.projectHours,
+      annualCreativeCost,
       contentOps,
       assetOps,
       revenue,
@@ -165,8 +180,8 @@ export default function Home() {
 
   const benefits = [
     {
-      name: "Image production",
-      value: result.imageProduction + result.imageLabor,
+      name: "Creative production",
+      value: result.imageProduction,
       color: "#8b5cf6",
     },
     { name: "Content operations", value: result.contentOps, color: "#0ea5e9" },
@@ -220,51 +235,96 @@ export default function Home() {
             <div className="card-heading">
               <span className="step">01</span>
               <div>
-                <h2>Image production</h2>
-                <p>Value created by producing and adapting images with PXM.</p>
+                <h2>Creative production</h2>
+                <p>
+                  Uses the exact task, role, rate, and scaling model from the
+                  supplied creative overhead calculator.
+                </p>
               </div>
             </div>
             <div className="field-grid">
               <Field
-                label="Images produced annually"
-                value={inputs.images}
-                onChange={(v) => set("images", v)}
-                help="New, resized, localized, or adapted"
-              />
-              <Field
-                label="Traditional cost / image"
-                value={inputs.traditionalImageCost}
-                onChange={(v) => set("traditionalImageCost", v)}
+                label="Current annual creative spend"
+                value={inputs.currentAnnualCreativeSpend}
+                onChange={(v) => set("currentAnnualCreativeSpend", v)}
                 prefix="$"
+                help="Customer-provided baseline; starts at zero"
               />
               <Field
-                label="PXM-assisted cost / image"
-                value={inputs.pxmImageCost}
-                onChange={(v) => set("pxmImageCost", v)}
-                prefix="$"
+                label="ASIN count / project"
+                value={inputs.asinCount}
+                onChange={(v) => set("asinCount", v)}
+                min={1}
               />
               <Field
-                label="Minutes saved / image"
-                value={inputs.imageMinutesSaved}
-                onChange={(v) => set("imageMinutesSaved", v)}
-                suffix="min"
+                label="Concept count / project"
+                value={inputs.conceptCount}
+                onChange={(v) => set("conceptCount", v)}
+                min={1}
+              />
+              <Field
+                label="AI images / ASIN"
+                value={inputs.aiImagesPerAsin}
+                onChange={(v) => set("aiImagesPerAsin", v)}
+                min={1}
+                help="Original calculator default: 15"
+              />
+              <Field
+                label="Projects / year"
+                value={inputs.annualProjects}
+                onChange={(v) => set("annualProjects", v)}
+                min={1}
               />
             </div>
-            <label className="check-row">
-              <input
-                type="checkbox"
-                checked={inputs.includeImageLabor}
-                onChange={(event) =>
-                  set("includeImageLabor", event.target.checked)
-                }
-              />
+            <div className="model-options">
+              <div>
+                <span className="field-label">Seller type</span>
+                <div className="mini-tabs">
+                  {(["1P", "3P"] as SellerType[]).map((type) => (
+                    <button
+                      key={type}
+                      className={inputs.sellerType === type ? "active" : ""}
+                      onClick={() => set("sellerType", type)}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <span className="field-label">Delivery tier</span>
+                <div className="mini-tabs">
+                  <button
+                    className={
+                      inputs.creativeTier === "creative" ? "active" : ""
+                    }
+                    onClick={() => set("creativeTier", "creative")}
+                  >
+                    Creative only
+                  </button>
+                  <button
+                    className={inputs.creativeTier === "pm" ? "active" : ""}
+                    onClick={() => set("creativeTier", "pm")}
+                  >
+                    + PM (×1.2)
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="model-output">
               <span>
-                Add internal labor savings
-                <small>
-                  Leave off when traditional image cost already includes labor.
-                </small>
+                <small>Modeled cost / project</small>
+                <strong>{money(result.creativeProjectCost)}</strong>
               </span>
-            </label>
+              <span>
+                <small>Modeled time / project</small>
+                <strong>{result.creativeProjectHours.toFixed(1)} hrs</strong>
+              </span>
+              <span>
+                <small>Modeled annual cost</small>
+                <strong>{money(result.annualCreativeCost)}</strong>
+              </span>
+            </div>
           </section>
 
           <section className="input-card">
@@ -436,8 +496,11 @@ export default function Home() {
           {showAssumptions && (
             <div className="logic">
               <p>
-                <b>Images:</b> annual images × (traditional cost − PXM cost),
-                plus optional labor savings.
+                <b>Creative production:</b> exact task minutes × original
+                role rates × fixed, concept, or ASIN scaling from the supplied
+                HTML. Image stacks use 9 units per ASIN, A+ uses 7, and AI
+                generation uses the selected images per ASIN. Project
+                management multiplies the modeled cost by 1.2.
               </p>
               <p>
                 <b>Operations:</b> annual task volume × minutes saved × loaded
