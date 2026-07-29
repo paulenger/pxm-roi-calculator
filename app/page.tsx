@@ -68,6 +68,14 @@ const money = (n: number) =>
     maximumFractionDigits: 0,
   }).format(Number.isFinite(n) ? n : 0);
 
+const moneyExact = (n: number) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number.isFinite(n) ? n : 0);
+
 const compact = (n: number) =>
   new Intl.NumberFormat("en-US", {
     notation: "compact",
@@ -164,6 +172,11 @@ export default function Home() {
       imageProduction,
       creativeProjectCost: creativeModel.projectCost,
       creativeProjectHours: creativeModel.projectHours,
+      aiImageGenerationCost: creativeModel.aiImageGenerationCost,
+      imageStackProductionCost: creativeModel.imageStackProductionCost,
+      aPlusProductionCost: creativeModel.aPlusProductionCost,
+      designerRatePerMinute: creativeModel.designerRatePerMinute,
+      tierMultiplier: creativeModel.tierMultiplier,
       annualCreativeCost,
       contentOps,
       assetOps,
@@ -495,13 +508,69 @@ export default function Home() {
           </button>
           {showAssumptions && (
             <div className="logic">
-              <p>
-                <b>Creative production:</b> exact task minutes × original
-                role rates × fixed, concept, or ASIN scaling from the supplied
-                HTML. Image stacks use 9 units per ASIN, A+ uses 7, and AI
-                generation uses the selected images per ASIN. Project
-                management multiplies the modeled cost by 1.2.
-              </p>
+              <div className="logic-section">
+                <b>Creative production — current inputs</b>
+                <div className="formula-row">
+                  <span>AI image generation</span>
+                  <code>
+                    {inputs.asinCount} ASIN{inputs.asinCount !== 1 ? "s" : ""} ×{" "}
+                    {inputs.aiImagesPerAsin} images × 1 min ×{" "}
+                    {moneyExact(result.designerRatePerMinute)}/min
+                    {result.tierMultiplier !== 1
+                      ? ` × ${result.tierMultiplier}`
+                      : ""}
+                  </code>
+                  <strong>{moneyExact(result.aiImageGenerationCost)}</strong>
+                </div>
+                <div className="formula-row">
+                  <span>Image-stack production</span>
+                  <code>
+                    {inputs.asinCount} ASIN{inputs.asinCount !== 1 ? "s" : ""} ×
+                    9 units × original task/role rate mix
+                    {result.tierMultiplier !== 1
+                      ? ` × ${result.tierMultiplier}`
+                      : ""}
+                  </code>
+                  <strong>{moneyExact(result.imageStackProductionCost)}</strong>
+                </div>
+                <div className="formula-row">
+                  <span>A+ production</span>
+                  <code>
+                    {inputs.asinCount} ASIN{inputs.asinCount !== 1 ? "s" : ""} ×
+                    7 units × original task/role rate mix
+                    {result.tierMultiplier !== 1
+                      ? ` × ${result.tierMultiplier}`
+                      : ""}
+                  </code>
+                  <strong>{moneyExact(result.aPlusProductionCost)}</strong>
+                </div>
+                <div className="formula-row total">
+                  <span>Complete project</span>
+                  <code>
+                    onboarding + audits + concepts + production + uploads +
+                    brand content + AI images
+                  </code>
+                  <strong>{moneyExact(result.creativeProjectCost)}</strong>
+                </div>
+                <div className="formula-row">
+                  <span>Annual modeled cost</span>
+                  <code>
+                    {moneyExact(result.creativeProjectCost)} ×{" "}
+                    {inputs.annualProjects} project
+                    {inputs.annualProjects !== 1 ? "s" : ""}
+                  </code>
+                  <strong>{moneyExact(result.annualCreativeCost)}</strong>
+                </div>
+                <div className="formula-row total">
+                  <span>Scenario-adjusted savings</span>
+                  <code>
+                    max(0, {moneyExact(inputs.currentAnnualCreativeSpend)} −{" "}
+                    {moneyExact(result.annualCreativeCost)}) ×{" "}
+                    {factor.toFixed(1)}
+                  </code>
+                  <strong>{moneyExact(result.imageProduction)}</strong>
+                </div>
+              </div>
               <p>
                 <b>Operations:</b> annual task volume × minutes saved × loaded
                 hourly rate.

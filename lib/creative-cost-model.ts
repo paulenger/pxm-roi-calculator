@@ -139,10 +139,19 @@ export function calculateCreativeProduction({
         .reduce((sum, task) => sum + task.baseCost, 0) * tierMultiplier,
     ]),
   );
+  const subPhaseCost = (phase: string, sub: string) =>
+    computed
+      .filter((task) => task.phase === phase && task.sub === sub)
+      .reduce((sum, task) => sum + task.baseCost, 0) * tierMultiplier;
 
   return {
     projectCost: baseCost * tierMultiplier,
     projectHours: minutes / 60,
     phaseCosts,
+    aiImageGenerationCost: phaseCosts["AI ImageGen"],
+    imageStackProductionCost: subPhaseCost("Image Stacks", "PRODUCTION"),
+    aPlusProductionCost: subPhaseCost("A+ Content", "PRODUCTION"),
+    designerRatePerMinute: rates.DESIGNER,
+    tierMultiplier,
   };
 }
