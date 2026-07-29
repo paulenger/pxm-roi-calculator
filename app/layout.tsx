@@ -13,6 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://pxm-roi-calculator.vercel.app"),
   title: "Pattern PXM Value Calculator",
   description:
     "Estimate the ROI of image production, content automation, asset operations, and ecommerce optimization with Pattern PXM.",
