@@ -472,16 +472,20 @@ export default function Home() {
       <section className="evidence">
         <div>
           <p className="eyebrow">Why these levers</p>
-          <h2>Built from observed PXM customer outcomes</h2>
+          <h2>Reported PXM customer outcomes</h2>
         </div>
         <div className="evidence-items">
           <article>
             <strong>2,080+</strong>
-            <span>yearly hours saved by one customer through automation</span>
+            <span>
+              estimated yearly hours saved by one customer through automation
+            </span>
           </article>
           <article>
             <strong>$650k</strong>
-            <span>Skullcandy ROI from efficiency and optimization gains</span>
+            <span>
+              estimated ROI reported in the Skullcandy case study
+            </span>
           </article>
           <article>
             <strong>Hours → minutes</strong>
