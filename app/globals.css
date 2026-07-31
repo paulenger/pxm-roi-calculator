@@ -117,6 +117,29 @@ h1 { font-size: clamp(38px, 4vw, 64px); letter-spacing: -.045em; line-height: .9
 .check-row input { margin-top: 2px; accent-color: var(--violet); }
 .check-row span { font-size: 13px; font-weight: 700; }
 .check-row small { display: block; color: var(--muted); font-weight: 400; margin-top: 3px; }
+.field-section-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.field-section-divider span {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.field-section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
 .model-options {
   display: flex;
   gap: 24px;
@@ -166,6 +189,18 @@ h1 { font-size: clamp(38px, 4vw, 64px); letter-spacing: -.045em; line-height: .9
   letter-spacing: .06em;
 }
 .model-output strong { font-size: 15px; }
+.model-output > span.model-output-savings {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgba(0, 167, 255, .2);
+}
+.model-output-prompt {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: italic;
+}
 
 .results { position: sticky; top: 88px; display: grid; gap: 14px; }
 .result-hero { padding: 28px; background: linear-gradient(135deg, #028edb 0%, #3d54e8 48%, #7125f4 100%); border-radius: 18px; box-shadow: 0 18px 60px rgba(50, 64, 220, .22); }
@@ -187,6 +222,20 @@ h1 { font-size: clamp(38px, 4vw, 64px); letter-spacing: -.045em; line-height: .9
 .benefit-list span { display: flex; align-items: center; gap: 8px; }
 .benefit-list i { width: 8px; height: 8px; border-radius: 50%; }
 .benefit-list strong { color: white; }
+.download-btn {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: 11px;
+  border: 1px solid rgba(0, 167, 255, .4);
+  background: rgba(0, 167, 255, .08);
+  color: var(--cyan);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: .02em;
+  transition: background 0.15s, border-color 0.15s;
+}
+.download-btn:hover { background: rgba(0, 167, 255, .16); border-color: var(--cyan); }
 .assumption-toggle { width: 100%; display: flex; justify-content: space-between; padding: 14px 16px; border: 1px solid var(--line); border-radius: 11px; background: #101624; cursor: pointer; font-size: 12px; font-weight: 700; }
 .logic { margin-top: -8px; padding: 15px; border: 1px solid var(--line); border-radius: 11px; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .logic p { margin: 5px 0; }

@@ -6,6 +6,8 @@ import {
   type CreativeTier,
   type SellerType,
 } from "@/lib/creative-cost-model";
+import { pdf } from "@react-pdf/renderer";
+import { ReportPDF } from "@/lib/report-pdf";
 
 type Inputs = {
   currentAnnualCreativeSpend: number;
@@ -54,9 +56,9 @@ const initial: Inputs = {
 };
 
 const scenarios = {
-  conservative: { label: "Conservative", factor: 0.7 },
-  expected: { label: "Expected", factor: 1 },
-  upside: { label: "Upside", factor: 1.3 },
+  conservative: { label: "Conservative", factor: 0.7, description: "Assumes 70% of projected benefits are realized — slower adoption, partial rollout." },
+  expected: { label: "Expected", factor: 1, description: "Full modeled value — typical outcome with standard adoption." },
+  upside: { label: "Upside", factor: 1.3, description: "130% of modeled value — favorable conditions, faster adoption, broader scope." },
 } as const;
 
 type Scenario = keyof typeof scenarios;
@@ -202,6 +204,28 @@ export default function Home() {
     { name: "Growth contribution", value: result.revenue, color: "#f59e0b" },
   ];
 
+  const handleDownloadPDF = async () => {
+    const now = new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    const blob = await pdf(
+      <ReportPDF
+        inputs={inputs}
+        result={result}
+        scenario={scenarios[scenario].label}
+        generatedAt={now}
+      />
+    ).toBlob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `pxm-value-report-${new Date().toISOString().slice(0, 10)}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <main>
       <header className="topbar">
@@ -244,10 +268,7 @@ export default function Home() {
               </button>
             ))}
           </div>
-          <small>
-            Applies a {Math.round(factor * 100)}% realization factor to modeled
-            benefits.
-          </small>
+          <small>{scenarios[scenario].description}</small>
         </div>
       </section>
 
@@ -270,7 +291,7 @@ export default function Home() {
                 value={inputs.currentAnnualCreativeSpend}
                 onChange={(v) => set("currentAnnualCreativeSpend", v)}
                 prefix="$"
-                help="Customer-provided baseline; starts at zero"
+                help="What you currently pay annually for Amazon content creation"
               />
               <Field
                 label="ASIN count / project"
@@ -289,7 +310,7 @@ export default function Home() {
                 value={inputs.aiImagesPerAsin}
                 onChange={(v) => set("aiImagesPerAsin", v)}
                 min={1}
-                help="Original calculator default: 15"
+                help="AI-generated images to produce per product listing"
               />
               <Field
                 label="Projects / year"
@@ -335,16 +356,24 @@ export default function Home() {
             </div>
             <div className="model-output">
               <span>
-                <small>Modeled cost / project</small>
+                <small>Pattern's cost / project</small>
                 <strong>{money(result.creativeProjectCost)}</strong>
               </span>
               <span>
-                <small>Modeled time / project</small>
+                <small>Est. time / project</small>
                 <strong>{result.creativeProjectHours.toFixed(1)} hrs</strong>
               </span>
               <span>
-                <small>Modeled annual cost</small>
+                <small>Pattern's annual cost</small>
                 <strong>{money(result.annualCreativeCost)}</strong>
+              </span>
+              <span className="model-output-savings">
+                <small>Savings vs. your current spend</small>
+                {inputs.currentAnnualCreativeSpend === 0 ? (
+                  <span className="model-output-prompt">Enter current spend above to calculate</span>
+                ) : (
+                  <strong>{money(Math.max(0, inputs.currentAnnualCreativeSpend - result.annualCreativeCost))}</strong>
+                )}
               </span>
             </div>
           </section>
@@ -435,6 +464,11 @@ export default function Home() {
                 suffix="%"
                 help="Share of modeled lift credited to PXM"
               />
+            </div>
+            <div className="field-section-divider">
+              <span>Investment</span>
+            </div>
+            <div className="field-grid">
               <Field
                 label="Annual PXM investment"
                 value={inputs.annualPXM}
@@ -460,6 +494,9 @@ export default function Home() {
               returned
             </span>
           </div>
+          <button className="download-btn" onClick={handleDownloadPDF}>
+            Download report (PDF)
+          </button>
           <div className="metric-grid">
             <div>
               <span>Year-one ROI</span>
