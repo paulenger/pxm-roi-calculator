@@ -24,6 +24,11 @@ type Inputs = {
   assetRequests: number;
   assetMinutesSaved: number;
   hourlyRate: number;
+  syndicationSkus: number;
+  syndicationChannels: number;
+  syndicationUpdatesPerYear: number;
+  syndicationMinutesPerPush: number;
+  syndicationAutomation: number;
   eligibleRevenue: number;
   revenueLift: number;
   grossMargin: number;
@@ -47,6 +52,11 @@ const initial: Inputs = {
   assetRequests: 1000,
   assetMinutesSaved: 20,
   hourlyRate: 50,
+  syndicationSkus: 500,
+  syndicationChannels: 5,
+  syndicationUpdatesPerYear: 4,
+  syndicationMinutesPerPush: 15,
+  syndicationAutomation: 80,
   eligibleRevenue: 5000000,
   revenueLift: 2,
   grossMargin: 40,
@@ -155,18 +165,27 @@ export default function Home() {
     const assetHours =
       (inputs.assetRequests * inputs.assetMinutesSaved * factor) / 60;
     const assetOps = assetHours * inputs.hourlyRate;
+    const syndicationHours =
+      (inputs.syndicationSkus *
+        inputs.syndicationChannels *
+        inputs.syndicationUpdatesPerYear *
+        inputs.syndicationMinutesPerPush *
+        (inputs.syndicationAutomation / 100) *
+        factor) /
+      60;
+    const syndicationSavings = syndicationHours * inputs.hourlyRate;
     const revenue =
       inputs.eligibleRevenue *
       (inputs.revenueLift / 100) *
       (inputs.grossMargin / 100) *
       (inputs.attribution / 100) *
       factor;
-    const gross = imageProduction + contentOps + assetOps + revenue;
+    const gross = imageProduction + contentOps + assetOps + syndicationSavings + revenue;
     const yearOneCost = inputs.annualPXM + inputs.implementation;
     const net = gross - yearOneCost;
     const roi = yearOneCost > 0 ? (net / yearOneCost) * 100 : 0;
     const payback = gross > 0 ? (yearOneCost / gross) * 12 : 0;
-    const hours = contentHours + assetHours;
+    const hours = contentHours + assetHours + syndicationHours;
     const threeYear =
       gross * 3 - inputs.annualPXM * 3 - inputs.implementation;
 
@@ -182,6 +201,8 @@ export default function Home() {
       annualCreativeCost,
       contentOps,
       assetOps,
+      syndicationSavings,
+      syndicationHours,
       revenue,
       gross,
       yearOneCost,
@@ -201,6 +222,7 @@ export default function Home() {
     },
     { name: "Content operations", value: result.contentOps, color: "#0ea5e9" },
     { name: "Asset operations", value: result.assetOps, color: "#22c55e" },
+    { name: "Syndication savings", value: result.syndicationSavings, color: "#ec4899" },
     { name: "Growth contribution", value: result.revenue, color: "#f59e0b" },
   ];
 
@@ -433,6 +455,56 @@ export default function Home() {
             <div className="card-heading">
               <span className="step">03</span>
               <div>
+                <h2>Syndication savings</h2>
+                <p>
+                  One update in PXM, automatically pushed to every retailer.
+                  Model the manual labor that disappears.
+                </p>
+              </div>
+            </div>
+            <div className="field-grid">
+              <Field
+                label="SKUs in syndication scope"
+                value={inputs.syndicationSkus}
+                onChange={(v) => set("syndicationSkus", v)}
+                min={1}
+                help="Number of products being distributed across channels"
+              />
+              <Field
+                label="Retailer / marketplace channels"
+                value={inputs.syndicationChannels}
+                onChange={(v) => set("syndicationChannels", v)}
+                min={1}
+                help="Distinct destinations receiving content (Amazon, Walmart, Target, etc.)"
+              />
+              <Field
+                label="Content updates / SKU / year"
+                value={inputs.syndicationUpdatesPerYear}
+                onChange={(v) => set("syndicationUpdatesPerYear", v)}
+                min={1}
+                help="How many times per year content changes (seasonal, pricing, copy refreshes)"
+              />
+              <Field
+                label="Minutes to push one SKU to one channel"
+                value={inputs.syndicationMinutesPerPush}
+                onChange={(v) => set("syndicationMinutesPerPush", v)}
+                suffix="min"
+                help="Manual time to copy, format, and submit content to a single retailer"
+              />
+              <Field
+                label="Syndication automation"
+                value={inputs.syndicationAutomation}
+                onChange={(v) => set("syndicationAutomation", v)}
+                suffix="%"
+                help="Portion of manual push work eliminated by PXM auto-syndication"
+              />
+            </div>
+          </section>
+
+          <section className="input-card">
+            <div className="card-heading">
+              <span className="step">04</span>
+              <div>
                 <h2>Growth & investment</h2>
                 <p>Conservatively attribute incremental contribution to PXM.</p>
               </div>
@@ -621,6 +693,37 @@ export default function Home() {
                 <b>Operations:</b> annual task volume × minutes saved × loaded
                 hourly rate.
               </p>
+              <div className="logic-section">
+                <b>Syndication savings — current inputs</b>
+                <div className="formula-row">
+                  <span>Manual pushes / year</span>
+                  <code>
+                    {inputs.syndicationSkus.toLocaleString()} SKUs ×{" "}
+                    {inputs.syndicationChannels} channels ×{" "}
+                    {inputs.syndicationUpdatesPerYear} updates
+                  </code>
+                  <strong>
+                    {(inputs.syndicationSkus * inputs.syndicationChannels * inputs.syndicationUpdatesPerYear).toLocaleString()}
+                  </strong>
+                </div>
+                <div className="formula-row">
+                  <span>Minutes eliminated</span>
+                  <code>
+                    {(inputs.syndicationSkus * inputs.syndicationChannels * inputs.syndicationUpdatesPerYear).toLocaleString()} pushes ×{" "}
+                    {inputs.syndicationMinutesPerPush} min × {inputs.syndicationAutomation}% automated
+                  </code>
+                  <strong>
+                    {Math.round(inputs.syndicationSkus * inputs.syndicationChannels * inputs.syndicationUpdatesPerYear * inputs.syndicationMinutesPerPush * (inputs.syndicationAutomation / 100)).toLocaleString()} min
+                  </strong>
+                </div>
+                <div className="formula-row total">
+                  <span>Scenario-adjusted value</span>
+                  <code>
+                    {result.syndicationHours.toFixed(0)} hrs × ${inputs.hourlyRate}/hr × {factor.toFixed(1)}
+                  </code>
+                  <strong>{moneyExact(result.syndicationSavings)}</strong>
+                </div>
+              </div>
               <p>
                 <b>Growth:</b> eligible revenue × lift × gross margin × PXM
                 attribution.

@@ -173,6 +173,11 @@ type Props = {
     assetRequests: number;
     assetMinutesSaved: number;
     hourlyRate: number;
+    syndicationSkus: number;
+    syndicationChannels: number;
+    syndicationUpdatesPerYear: number;
+    syndicationMinutesPerPush: number;
+    syndicationAutomation: number;
     eligibleRevenue: number;
     revenueLift: number;
     grossMargin: number;
@@ -184,6 +189,7 @@ type Props = {
     imageProduction: number;
     contentOps: number;
     assetOps: number;
+    syndicationSavings: number;
     revenue: number;
     gross: number;
     net: number;
@@ -201,6 +207,7 @@ const benefits = (result: Props["result"]) => [
   { label: "Creative production", value: result.imageProduction, color: c.purple },
   { label: "Content operations", value: result.contentOps, color: c.sky },
   { label: "Asset operations", value: result.assetOps, color: c.green },
+  { label: "Syndication savings", value: result.syndicationSavings, color: "#ec4899" },
   { label: "Growth contribution", value: result.revenue, color: c.amber },
 ];
 
@@ -331,6 +338,18 @@ export function ReportPDF({ inputs, result, scenario, generatedAt }: Props) {
               <View style={s.inputRow}>
                 <Text style={s.inputLabel}>Asset requests / year</Text>
                 <Text style={s.inputValue}>{inputs.assetRequests.toLocaleString()}</Text>
+              </View>
+              <View style={s.inputRow}>
+                <Text style={s.inputLabel}>SKUs syndicated</Text>
+                <Text style={s.inputValue}>{inputs.syndicationSkus.toLocaleString()}</Text>
+              </View>
+              <View style={s.inputRow}>
+                <Text style={s.inputLabel}>Channels · updates/yr · min/push</Text>
+                <Text style={s.inputValue}>{inputs.syndicationChannels} · {inputs.syndicationUpdatesPerYear} · {inputs.syndicationMinutesPerPush} min</Text>
+              </View>
+              <View style={s.inputRow}>
+                <Text style={s.inputLabel}>Syndication automation</Text>
+                <Text style={s.inputValue}>{inputs.syndicationAutomation}%</Text>
               </View>
               <View style={s.inputRow}>
                 <Text style={s.inputLabel}>Revenue in scope</Text>
