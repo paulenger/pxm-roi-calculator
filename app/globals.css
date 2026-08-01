@@ -266,9 +266,9 @@ h1 { font-size: clamp(38px, 4vw, 64px); letter-spacing: -.045em; line-height: .9
 
 .evidence { border-top: 1px solid var(--line); padding: 65px 5vw; max-width: 1450px; margin: 0 auto; }
 .evidence h2 { margin: 0; font-size: 28px; letter-spacing: -.025em; }
-.evidence-items { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 28px; }
+.evidence-items { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 28px; }
 .evidence article { padding: 22px; border-left: 2px solid var(--cyan); background: rgba(18, 24, 39, .65); }
-.evidence article strong { display: block; font-size: 24px; margin-bottom: 6px; }
+.evidence article strong { display: block; font-size: 20px; margin-bottom: 6px; }
 .evidence article span { color: var(--muted); font-size: 12px; line-height: 1.5; }
 .disclaimer { color: #69758a; font-size: 10px; margin: 24px 0 0; }
 

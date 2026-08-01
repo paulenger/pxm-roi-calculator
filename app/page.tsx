@@ -632,12 +632,12 @@ export default function Home() {
           )}
 
           <div className="proof-card">
-            <p className="eyebrow">PXM scale signals · W28</p>
+            <p className="eyebrow">Pattern at scale</p>
             <div className="proof-grid">
-              <div><strong>509k</strong><span>media stacks</span></div>
-              <div><strong>292k</strong><span>products with stacks</span></div>
-              <div><strong>819k</strong><span>syndicated products</span></div>
-              <div><strong>33</strong><span>active channels</span></div>
+              <div><strong>#1</strong><span>Amazon seller globally</span></div>
+              <div><strong>700+</strong><span>brands managed</span></div>
+              <div><strong>2.3M</strong><span>products in PXM</span></div>
+              <div><strong>1,000+</strong><span>marketplaces receiving content</span></div>
             </div>
             <small>
               Contextual proof points only. Customer ROI is calculated from the
@@ -649,25 +649,37 @@ export default function Home() {
 
       <section className="evidence">
         <div>
-          <p className="eyebrow">Why these levers</p>
-          <h2>Reported PXM customer outcomes</h2>
+          <p className="eyebrow">Customer outcomes</p>
+          <h2>What brands achieve with Pattern PXM</h2>
         </div>
         <div className="evidence-items">
           <article>
-            <strong>2,080+</strong>
+            <strong>Skullcandy</strong>
             <span>
-              estimated yearly hours saved by one customer through automation
+              Eliminated redundant content re-entry across retailers — content
+              created once, distributed everywhere automatically
             </span>
           </article>
           <article>
-            <strong>$650k</strong>
+            <strong>KÜHL</strong>
             <span>
-              estimated ROI reported in the Skullcandy case study
+              Accelerated time-to-market for new seasonal launches by centralizing
+              product data and media in a single PXM workflow
             </span>
           </article>
           <article>
-            <strong>Hours → minutes</strong>
-            <span>reported reduction in asset-search time at 100 Percent</span>
+            <strong>TRŪ Fragrance</strong>
+            <span>
+              Scaled to new retail channels without adding headcount — PXM
+              syndication handled retailer-specific formatting automatically
+            </span>
+          </article>
+          <article>
+            <strong>Martin &amp; Co.</strong>
+            <span>
+              Consolidated product content management across a large catalog,
+              reducing manual asset operations and improving listing consistency
+            </span>
           </article>
         </div>
         <p className="disclaimer">
