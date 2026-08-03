@@ -909,12 +909,6 @@ export default function Home() {
             </span>
           </article>
           <article>
-            <strong>KÜHL</strong>
-            <span>
-              950+ users on the platform. 75,000+ files stored and organized in a single searchable library — replacing disconnected folders across a catalog with hundreds of size and color variations.
-            </span>
-          </article>
-          <article>
             <strong>BetterBody Foods — &gt;50% time saved</strong>
             <span>
               Replaced Dropbox and disconnected Word docs with PXM's unified PIM + DAM + API Syndication. Teams went from hunting across documents for a UPC or nutrition fact to finding everything on a single product page. Reported more than 50% reduction in time spent on content operations.
