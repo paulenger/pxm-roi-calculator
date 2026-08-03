@@ -263,7 +263,7 @@ export default function Home() {
         </div>
         <div className="top-actions">
           <a
-            href="/PXM_ROI_Calculator_User_Guide.pdf"
+            href="/api/user-guide"
             target="_blank"
             rel="noreferrer"
           >
