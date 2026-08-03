@@ -97,6 +97,9 @@ const compact = (n: number) =>
     maximumFractionDigits: 1,
   }).format(Number.isFinite(n) ? n : 0);
 
+// 1 min of designer time × $0.14/min — Pattern's internal creative rate model
+const PATTERN_AI_IMAGE_RATE = 0.14;
+
 function Field({
   label,
   value,
@@ -149,7 +152,12 @@ export default function Home() {
     setInputs((current) => ({ ...current, [key]: value }));
 
   const result = useMemo(() => {
-    const imageProduction = 0;
+    const totalImages = inputs.asinCount * inputs.aiImagesPerAsin;
+    const currentImageCost = totalImages * inputs.currentCostPerImage;
+    const patternImageCost = totalImages * PATTERN_AI_IMAGE_RATE;
+    const imageProduction = useCreative
+      ? Math.max(0, currentImageCost - patternImageCost) * factor
+      : 0;
     const contentHours =
       (inputs.products *
         inputs.updates *
@@ -189,6 +197,9 @@ export default function Home() {
 
     return {
       imageProduction,
+      totalImages,
+      currentImageCost,
+      patternImageCost,
       contentOps,
       contentHours,
       assetOps,
@@ -205,9 +216,10 @@ export default function Home() {
       hours,
       threeYear,
     };
-  }, [inputs, factor]);
+  }, [inputs, factor, useCreative]);
 
   const benefits = [
+    ...(useCreative ? [{ name: "Creative production", value: result.imageProduction, color: "#8b5cf6" }] : []),
     { name: "Content operations", value: result.contentOps, color: "#0ea5e9" },
     { name: "Asset operations", value: result.assetOps, color: "#22c55e" },
     { name: "Syndication savings", value: result.syndicationSavings, color: "#ec4899" },
@@ -216,6 +228,7 @@ export default function Home() {
   ];
 
   const benefitDescriptions: Record<string, string> = {
+    "Creative production": "Savings from replacing your current agency or photo shoot cost with Pattern's AI-assisted production — same output at $0.14/image vs. $100–$300+ at an agency.",
     "Content operations": "Labor value of time recovered when your team stops manually editing and republishing product content across channels. BetterBody Foods reported >50% time saved.",
     "Asset operations": "Time recovered when all assets live in one searchable library instead of Dropbox, email, and shared drives. 100 Percent reduced search time from hours to minutes; Skullcandy generated $650K in ROI from team efficiency gains across 500+ distributors.",
     "Syndication savings": "Labor eliminated by automating per-retailer content pushes. One update in PXM reaches all connected channels simultaneously — no reformatting, no manual uploads. Pattern customers have saved 2,080+ hours per year from automation alone.",
@@ -315,6 +328,59 @@ export default function Home() {
                 {useCreative ? "Included" : "Not included"}
               </button>
             </div>
+            {useCreative && (
+              <>
+                <div className="field-grid">
+                  <Field
+                    label="Products getting new images per year"
+                    value={inputs.asinCount}
+                    onChange={(v) => set("asinCount", v)}
+                    min={1}
+                    help="How many products are you creating or refreshing images for this year"
+                  />
+                  <Field
+                    label="Images per product"
+                    value={inputs.aiImagesPerAsin}
+                    onChange={(v) => set("aiImagesPerAsin", v)}
+                    min={1}
+                    help="Number of images per product listing — a full Amazon image stack is typically 7–15 images"
+                  />
+                  <Field
+                    label="Your current cost per image"
+                    value={inputs.currentCostPerImage}
+                    onChange={(v) => set("currentCostPerImage", v)}
+                    prefix="$"
+                    step={10}
+                    help="What you pay today per image — agency retainers typically run $100–$300/image; studio photoshoots $150–$500+ depending on complexity"
+                  />
+                </div>
+                <div className="model-output">
+                  <span>
+                    <small>Total images / year</small>
+                    <strong>{result.totalImages.toLocaleString()}</strong>
+                  </span>
+                  <span>
+                    <small>Your current cost</small>
+                    <strong>{money(result.currentImageCost)}</strong>
+                  </span>
+                  <span>
+                    <small>Pattern's cost</small>
+                    <strong>{money(result.patternImageCost)}</strong>
+                  </span>
+                  <span className="model-output-savings">
+                    <small>Estimated annual savings</small>
+                    {inputs.currentCostPerImage <= PATTERN_AI_IMAGE_RATE ? (
+                      <span className="model-output-prompt">Your current rate is at or below Pattern's — no savings to model</span>
+                    ) : (
+                      <strong>{money(Math.max(0, result.currentImageCost - result.patternImageCost))}</strong>
+                    )}
+                  </span>
+                </div>
+                <p className="field-help" style={{ marginTop: 12 }}>
+                  Pattern's AI image generation costs <strong style={{ color: "white" }}>${PATTERN_AI_IMAGE_RATE.toFixed(2)}/image</strong> — 1 minute of designer time at Pattern's internal rate.
+                </p>
+              </>
+            )}
           </section>
 
           <section className="input-card">
@@ -605,6 +671,31 @@ export default function Home() {
           </button>
           {showAssumptions && (
             <div className="logic">
+              {useCreative && (
+                <div className="logic-section">
+                  <b>Creative production</b>
+                  <div className="formula-row">
+                    <span>Total images</span>
+                    <code>{inputs.asinCount} products × {inputs.aiImagesPerAsin} images/product</code>
+                    <strong>{result.totalImages.toLocaleString()} images</strong>
+                  </div>
+                  <div className="formula-row">
+                    <span>Your current cost</span>
+                    <code>{result.totalImages.toLocaleString()} images × {moneyExact(inputs.currentCostPerImage)}/image</code>
+                    <strong>{moneyExact(result.currentImageCost)}</strong>
+                  </div>
+                  <div className="formula-row">
+                    <span>Pattern's cost</span>
+                    <code>{result.totalImages.toLocaleString()} images × ${PATTERN_AI_IMAGE_RATE.toFixed(2)}/image</code>
+                    <strong>{moneyExact(result.patternImageCost)}</strong>
+                  </div>
+                  <div className="formula-row total">
+                    <span>Scenario-adjusted savings</span>
+                    <code>max(0, {moneyExact(result.currentImageCost)} − {moneyExact(result.patternImageCost)}) × {factor.toFixed(1)}</code>
+                    <strong>{moneyExact(result.imageProduction)}</strong>
+                  </div>
+                </div>
+              )}
               <div className="logic-section">
                 <b>Content operations</b>
                 <div className="formula-row">
