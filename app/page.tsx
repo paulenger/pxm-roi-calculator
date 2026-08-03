@@ -915,15 +915,15 @@ export default function Home() {
             </span>
           </article>
           <article>
-            <strong>TRŪ</strong>
+            <strong>BetterBody Foods — &gt;50% time saved</strong>
             <span>
-              Replaced Google Drive for product info and Dropbox for assets with PXM as a single source of truth — eliminating the manual work of keeping two disconnected systems in sync.
+              Replaced Dropbox and disconnected Word docs with PXM's unified PIM + DAM + API Syndication. Teams went from hunting across documents for a UPC or nutrition fact to finding everything on a single product page. Reported more than 50% reduction in time spent on content operations.
             </span>
           </article>
           <article>
-            <strong>Martin &amp; Co.</strong>
+            <strong>100 Percent — hours to minutes</strong>
             <span>
-              PXM's PDF Generator saves their team hours every day producing Sell Sheets directly from product data — no reformatting, no manual assembly.
+              Two team members were spending half their time locating, resizing, and sending assets from a Dropbox with no search. After PXM: asset search time dropped from hours to minutes and sales rep productivity doubled.
             </span>
           </article>
         </div>
