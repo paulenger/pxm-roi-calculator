@@ -911,22 +911,19 @@ export default function Home() {
           <article>
             <strong>KÜHL</strong>
             <span>
-              Accelerated time-to-market for new seasonal launches by centralizing
-              product data and media in a single PXM workflow
+              950+ users on the platform. 75,000+ files stored and organized in a single searchable library — replacing disconnected folders across a catalog with hundreds of size and color variations.
             </span>
           </article>
           <article>
-            <strong>TRŪ Fragrance</strong>
+            <strong>TRŪ</strong>
             <span>
-              Scaled to new retail channels without adding headcount — PXM
-              syndication handled retailer-specific formatting automatically
+              Replaced Google Drive for product info and Dropbox for assets with PXM as a single source of truth — eliminating the manual work of keeping two disconnected systems in sync.
             </span>
           </article>
           <article>
             <strong>Martin &amp; Co.</strong>
             <span>
-              Consolidated product content management across a large catalog,
-              reducing manual asset operations and improving listing consistency
+              PXM's PDF Generator saves their team hours every day producing Sell Sheets directly from product data — no reformatting, no manual assembly.
             </span>
           </article>
         </div>
