@@ -46,8 +46,8 @@ const initial: Inputs = {
   annualProjects: 2,
   creativeTier: "creative",
   products: 150,
-  updates: 2,
-  updateMinutes: 30,
+  updates: 4,
+  updateMinutes: 15,
   automation: 60,
   assetRequests: 500,
   assetMinutesSaved: 20,
@@ -438,7 +438,7 @@ export default function Home() {
                 label="Updates / product / year"
                 value={inputs.updates}
                 onChange={(v) => set("updates", v)}
-                help="How many times a year does content change per product — seasonal copy, new images, pricing, compliance updates. Pi-validated range: 2–4×."
+                help="How many times a year does content change per product — seasonal copy, new images, pricing, compliance updates. Pi-validated: 4× is the expected cadence; 2× is a defensible conservative floor."
               />
               <Field
                 label="Minutes / manual update"
