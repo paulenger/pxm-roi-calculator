@@ -45,18 +45,18 @@ const initial: Inputs = {
   aiImagesPerAsin: 15,
   annualProjects: 2,
   creativeTier: "creative",
-  products: 500,
+  products: 150,
   updates: 2,
   updateMinutes: 30,
   automation: 60,
   assetRequests: 500,
   assetMinutesSaved: 20,
   hourlyRate: 50,
-  syndicationSkus: 250,
-  syndicationChannels: 5,
+  syndicationSkus: 150,
+  syndicationChannels: 3,
   syndicationUpdatesPerYear: 4,
   syndicationMinutesPerPush: 15,
-  syndicationAutomation: 80,
+  syndicationAutomation: 50,
   currentPIMCost: 0,
   currentDAMCost: 0,
   currentSyndicationToolCost: 0,
@@ -139,6 +139,7 @@ export default function Home() {
   const [inputs, setInputs] = useState(initial);
   const [scenario, setScenario] = useState<Scenario>("expected");
   const [showAssumptions, setShowAssumptions] = useState(false);
+  const [useCreative, setUseCreative] = useState(false);
   const factor = scenarios[scenario].factor;
 
   const set = <K extends keyof Inputs>(key: K, value: Inputs[K]) =>
@@ -153,9 +154,9 @@ export default function Home() {
     });
     const annualCreativeCost =
       creativeModel.projectCost * Math.max(1, inputs.annualProjects);
-    const imageProduction =
-      Math.max(0, inputs.currentAnnualCreativeSpend - annualCreativeCost) *
-      factor;
+    const imageProduction = useCreative
+      ? Math.max(0, inputs.currentAnnualCreativeSpend - annualCreativeCost) * factor
+      : 0;
     const contentHours =
       (inputs.products *
         inputs.updates *
@@ -217,14 +218,10 @@ export default function Home() {
       hours,
       threeYear,
     };
-  }, [inputs, factor]);
+  }, [inputs, factor, useCreative]);
 
   const benefits = [
-    {
-      name: "Creative production",
-      value: result.imageProduction,
-      color: "#8b5cf6",
-    },
+    ...(useCreative ? [{ name: "Creative production", value: result.imageProduction, color: "#8b5cf6" }] : []),
     { name: "Content operations", value: result.contentOps, color: "#0ea5e9" },
     { name: "Asset operations", value: result.assetOps, color: "#22c55e" },
     { name: "Syndication savings", value: result.syndicationSavings, color: "#ec4899" },
@@ -311,95 +308,101 @@ export default function Home() {
           <section className="input-card image-card">
             <div className="card-heading">
               <span className="step">01</span>
-              <div>
+              <div style={{ flex: 1 }}>
                 <h2>Pattern Creative Services</h2>
                 <p>
-                  Optional add-on to PXM. See what Pattern charges to produce
-                  your content — based on actual role rates and task times, not
-                  estimates. Leave current spend at $0 if not applicable.
+                  Optional add-on to PXM. Only include this section if Pattern is producing creative for this brand.
                 </p>
               </div>
+              <button
+                className={`creative-toggle ${useCreative ? "active" : ""}`}
+                onClick={() => setUseCreative((v) => !v)}
+              >
+                {useCreative ? "Included" : "Not included"}
+              </button>
             </div>
-            <div className="field-grid">
-              <Field
-                label="Current annual creative spend"
-                value={inputs.currentAnnualCreativeSpend}
-                onChange={(v) => set("currentAnnualCreativeSpend", v)}
-                prefix="$"
-                help="What you currently pay annually for Amazon content creation"
-              />
-              <Field
-                label="Products per project"
-                value={inputs.asinCount}
-                onChange={(v) => set("asinCount", v)}
-                min={1}
-                help="How many individual products are included in one creative project"
-              />
-              <Field
-                label="Design concepts per project"
-                value={inputs.conceptCount}
-                onChange={(v) => set("conceptCount", v)}
-                min={1}
-                help="How many distinct visual directions are developed — typically 1 for a refresh, 2–3 for a new brand launch"
-              />
-              <Field
-                label="AI images per product"
-                value={inputs.aiImagesPerAsin}
-                onChange={(v) => set("aiImagesPerAsin", v)}
-                min={1}
-                help="Number of AI-generated images produced per product listing"
-              />
-              <Field
-                label="Projects per year"
-                value={inputs.annualProjects}
-                onChange={(v) => set("annualProjects", v)}
-                min={1}
-                help="How many creative projects does your brand run in a typical year"
-              />
-            </div>
-            <div className="model-options">
-              <div>
-                <span className="field-label">Delivery tier</span>
-                <div className="mini-tabs">
-                  <button
-                    className={
-                      inputs.creativeTier === "creative" ? "active" : ""
-                    }
-                    onClick={() => set("creativeTier", "creative")}
-                  >
-                    Creative only
-                  </button>
-                  <button
-                    className={inputs.creativeTier === "pm" ? "active" : ""}
-                    onClick={() => set("creativeTier", "pm")}
-                  >
-                    Include project management (+20%)
-                  </button>
+            {useCreative && (
+              <>
+                <div className="field-grid">
+                  <Field
+                    label="Current annual creative spend"
+                    value={inputs.currentAnnualCreativeSpend}
+                    onChange={(v) => set("currentAnnualCreativeSpend", v)}
+                    prefix="$"
+                    help="What you currently pay annually for Amazon content creation"
+                  />
+                  <Field
+                    label="Products per project"
+                    value={inputs.asinCount}
+                    onChange={(v) => set("asinCount", v)}
+                    min={1}
+                    help="How many individual products are included in one creative project"
+                  />
+                  <Field
+                    label="Design concepts per project"
+                    value={inputs.conceptCount}
+                    onChange={(v) => set("conceptCount", v)}
+                    min={1}
+                    help="How many distinct visual directions are developed — typically 1 for a refresh, 2–3 for a new brand launch"
+                  />
+                  <Field
+                    label="AI images per product"
+                    value={inputs.aiImagesPerAsin}
+                    onChange={(v) => set("aiImagesPerAsin", v)}
+                    min={1}
+                    help="Number of AI-generated images produced per product listing"
+                  />
+                  <Field
+                    label="Projects per year"
+                    value={inputs.annualProjects}
+                    onChange={(v) => set("annualProjects", v)}
+                    min={1}
+                    help="How many creative projects does your brand run in a typical year"
+                  />
                 </div>
-              </div>
-            </div>
-            <div className="model-output">
-              <span>
-                <small>Pattern's cost / project</small>
-                <strong>{money(result.creativeProjectCost)}</strong>
-              </span>
-              <span>
-                <small>Est. time / project</small>
-                <strong>{result.creativeProjectHours.toFixed(1)} hrs</strong>
-              </span>
-              <span>
-                <small>Pattern's annual cost</small>
-                <strong>{money(result.annualCreativeCost)}</strong>
-              </span>
-              <span className="model-output-savings">
-                <small>Savings vs. your current spend</small>
-                {inputs.currentAnnualCreativeSpend === 0 ? (
-                  <span className="model-output-prompt">Enter current spend above to calculate</span>
-                ) : (
-                  <strong>{money(Math.max(0, inputs.currentAnnualCreativeSpend - result.annualCreativeCost))}</strong>
-                )}
-              </span>
-            </div>
+                <div className="model-options">
+                  <div>
+                    <span className="field-label">Delivery tier</span>
+                    <div className="mini-tabs">
+                      <button
+                        className={inputs.creativeTier === "creative" ? "active" : ""}
+                        onClick={() => set("creativeTier", "creative")}
+                      >
+                        Creative only
+                      </button>
+                      <button
+                        className={inputs.creativeTier === "pm" ? "active" : ""}
+                        onClick={() => set("creativeTier", "pm")}
+                      >
+                        Include project management (+20%)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="model-output">
+                  <span>
+                    <small>Pattern's cost / project</small>
+                    <strong>{money(result.creativeProjectCost)}</strong>
+                  </span>
+                  <span>
+                    <small>Est. time / project</small>
+                    <strong>{result.creativeProjectHours.toFixed(1)} hrs</strong>
+                  </span>
+                  <span>
+                    <small>Pattern's annual cost</small>
+                    <strong>{money(result.annualCreativeCost)}</strong>
+                  </span>
+                  <span className="model-output-savings">
+                    <small>Savings vs. your current spend</small>
+                    {inputs.currentAnnualCreativeSpend === 0 ? (
+                      <span className="model-output-prompt">Enter current spend above to calculate</span>
+                    ) : (
+                      <strong>{money(Math.max(0, inputs.currentAnnualCreativeSpend - result.annualCreativeCost))}</strong>
+                    )}
+                  </span>
+                </div>
+              </>
+            )}
           </section>
 
           <section className="input-card">
@@ -502,7 +505,7 @@ export default function Home() {
                 value={inputs.syndicationAutomation}
                 onChange={(v) => set("syndicationAutomation", v)}
                 suffix="%"
-                help="PXM auto-syndicates content to all connected channels from one update. Most brands see 70–90% of manual push work eliminated."
+                help="PXM auto-syndicates content to all connected channels from one update. Mid-market brands in Year 1 typically see 40–60% eliminated; 70–90% is achievable in Year 2+ as more channels are connected."
               />
             </div>
           </section>
@@ -674,7 +677,7 @@ export default function Home() {
           </button>
           {showAssumptions && (
             <div className="logic">
-              <div className="logic-section">
+              {useCreative && <div className="logic-section">
                 <b>Creative production — current inputs</b>
                 <div className="formula-row">
                   <span>AI image generation</span>
@@ -736,7 +739,7 @@ export default function Home() {
                   </code>
                   <strong>{moneyExact(result.imageProduction)}</strong>
                 </div>
-              </div>
+              </div>}
               <p>
                 <b>Operations:</b> annual task volume × minutes saved × loaded
                 hourly rate.

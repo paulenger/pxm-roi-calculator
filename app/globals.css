@@ -202,6 +202,25 @@ h1 { font-size: clamp(38px, 4vw, 64px); letter-spacing: -.045em; line-height: .9
   font-style: italic;
 }
 
+.creative-toggle {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(116, 38, 255, .4);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.creative-toggle:hover { border-color: var(--violet); color: white; }
+.creative-toggle.active {
+  background: rgba(116, 38, 255, .2);
+  border-color: var(--violet);
+  color: white;
+}
+
 .results { position: sticky; top: 88px; display: grid; gap: 14px; }
 .result-hero { padding: 28px; background: linear-gradient(135deg, #028edb 0%, #3d54e8 48%, #7125f4 100%); border-radius: 18px; box-shadow: 0 18px 60px rgba(50, 64, 220, .22); }
 .result-hero p { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .1em; font-weight: 800; opacity: .78; }
