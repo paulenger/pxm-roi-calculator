@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import {
   calculateCreativeProduction,
   type CreativeTier,
-  type SellerType,
 } from "@/lib/creative-cost-model";
 import { pdf } from "@react-pdf/renderer";
 import { ReportPDF } from "@/lib/report-pdf";
@@ -15,7 +14,6 @@ type Inputs = {
   conceptCount: number;
   aiImagesPerAsin: number;
   annualProjects: number;
-  sellerType: SellerType;
   creativeTier: CreativeTier;
   products: number;
   updates: number;
@@ -43,7 +41,6 @@ const initial: Inputs = {
   conceptCount: 1,
   aiImagesPerAsin: 15,
   annualProjects: 1,
-  sellerType: "1P",
   creativeTier: "creative",
   products: 5000,
   updates: 2,
@@ -146,7 +143,6 @@ export default function Home() {
       asinCount: inputs.asinCount,
       conceptCount: inputs.conceptCount,
       aiImagesPerAsin: inputs.aiImagesPerAsin,
-      sellerType: inputs.sellerType,
       tier: inputs.creativeTier,
     });
     const annualCreativeCost =
@@ -342,20 +338,6 @@ export default function Home() {
               />
             </div>
             <div className="model-options">
-              <div>
-                <span className="field-label">Seller type</span>
-                <div className="mini-tabs">
-                  {(["1P", "3P"] as SellerType[]).map((type) => (
-                    <button
-                      key={type}
-                      className={inputs.sellerType === type ? "active" : ""}
-                      onClick={() => set("sellerType", type)}
-                    >
-                      {type}
-                    </button>
-                  ))}
-                </div>
-              </div>
               <div>
                 <span className="field-label">Delivery tier</span>
                 <div className="mini-tabs">

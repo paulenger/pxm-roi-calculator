@@ -164,7 +164,6 @@ type Props = {
     conceptCount: number;
     aiImagesPerAsin: number;
     annualProjects: number;
-    sellerType: string;
     creativeTier: string;
     products: number;
     updates: number;
@@ -307,10 +306,6 @@ export function ReportPDF({ inputs, result, scenario, generatedAt }: Props) {
               <View style={s.inputRow}>
                 <Text style={s.inputLabel}>Projects / year</Text>
                 <Text style={s.inputValue}>{inputs.annualProjects}</Text>
-              </View>
-              <View style={s.inputRow}>
-                <Text style={s.inputLabel}>Seller type</Text>
-                <Text style={s.inputValue}>{inputs.sellerType}</Text>
               </View>
               <View style={s.inputRow}>
                 <Text style={s.inputLabel}>Delivery tier</Text>

@@ -1,4 +1,3 @@
-export type SellerType = "1P" | "3P";
 export type CreativeTier = "creative" | "pm";
 type Role = "AD" | "DESIGNER" | "COPYWRITER" | "QA" | "AM";
 type Scaling = "fixed" | "concept" | "asin";
@@ -13,11 +12,10 @@ type Task = {
   factor?: number;
 };
 
-// These rates, task minutes, and scaling rules are copied from
-// Creative_Team_Overhead_Calculator_Client.html.
-const RATES: Record<SellerType, Record<Role, number>> = {
-  "1P": { AD: 0.93, DESIGNER: 0.14, COPYWRITER: 0.12, QA: 0.1, AM: 0.1 },
-  "3P": { AD: 0.87, DESIGNER: 0.14, COPYWRITER: 0.12, QA: 0.1, AM: 0.1 },
+// Blended rate across 1P and 3P seller types (AD: avg of $0.93 and $0.87).
+// Copied from Creative_Team_Overhead_Calculator_Client.html.
+const RATES: Record<Role, number> = {
+  AD: 0.9, DESIGNER: 0.14, COPYWRITER: 0.12, QA: 0.1, AM: 0.1,
 };
 
 const TASKS: Task[] = [
@@ -98,19 +96,17 @@ export function calculateCreativeProduction({
   asinCount,
   conceptCount,
   aiImagesPerAsin,
-  sellerType,
   tier,
 }: {
   asinCount: number;
   conceptCount: number;
   aiImagesPerAsin: number;
-  sellerType: SellerType;
   tier: CreativeTier;
 }) {
   const asin = Math.max(1, Math.trunc(asinCount) || 1);
   const concept = Math.max(1, Math.trunc(conceptCount) || 1);
   const aiImages = Math.max(1, Math.trunc(aiImagesPerAsin) || 15);
-  const rates = RATES[sellerType];
+  const rates = RATES;
   const tierMultiplier = tier === "pm" ? 1.2 : 1;
 
   const computed = TASKS.map((task) => {
