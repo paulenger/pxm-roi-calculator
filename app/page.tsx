@@ -1,20 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  calculateCreativeProduction,
-  type CreativeTier,
-} from "@/lib/creative-cost-model";
 import { pdf } from "@react-pdf/renderer";
 import { ReportPDF } from "@/lib/report-pdf";
 
 type Inputs = {
-  currentAnnualCreativeSpend: number;
+  currentCostPerImage: number;
   asinCount: number;
-  conceptCount: number;
   aiImagesPerAsin: number;
+  // kept in state for PDF compat, not shown in UI:
+  currentAnnualCreativeSpend: number;
+  conceptCount: number;
   annualProjects: number;
-  creativeTier: CreativeTier;
+  creativeTier: string;
   products: number;
   updates: number;
   updateMinutes: number;
@@ -39,12 +37,14 @@ type Inputs = {
 };
 
 const initial: Inputs = {
-  currentAnnualCreativeSpend: 0,
+  currentCostPerImage: 150,
   asinCount: 25,
-  conceptCount: 1,
   aiImagesPerAsin: 15,
-  annualProjects: 2,
-  creativeTier: "creative",
+  // PDF compat — not shown in UI:
+  currentAnnualCreativeSpend: 0,
+  conceptCount: 1,
+  annualProjects: 1,
+  creativeTier: "ai-gen",
   products: 150,
   updates: 4,
   updateMinutes: 15,
@@ -64,8 +64,8 @@ const initial: Inputs = {
   revenueLift: 1,
   grossMargin: 40,
   attribution: 50,
-  annualPXM: 75000,
-  implementation: 15000,
+  annualPXM: 0,
+  implementation: 0,
 };
 
 const scenarios = {
@@ -123,10 +123,13 @@ function Field({
         {prefix && <span>{prefix}</span>}
         <input
           type="number"
-          value={value}
+          value={value === 0 ? "" : value}
           min={min}
           step={step}
-          onChange={(event) => onChange(Number(event.target.value))}
+          placeholder="0"
+          onChange={(event) =>
+            onChange(event.target.value === "" ? 0 : Number(event.target.value))
+          }
         />
         {suffix && <span>{suffix}</span>}
       </span>
@@ -146,17 +149,7 @@ export default function Home() {
     setInputs((current) => ({ ...current, [key]: value }));
 
   const result = useMemo(() => {
-    const creativeModel = calculateCreativeProduction({
-      asinCount: inputs.asinCount,
-      conceptCount: inputs.conceptCount,
-      aiImagesPerAsin: inputs.aiImagesPerAsin,
-      tier: inputs.creativeTier,
-    });
-    const annualCreativeCost =
-      creativeModel.projectCost * Math.max(1, inputs.annualProjects);
-    const imageProduction = useCreative
-      ? Math.max(0, inputs.currentAnnualCreativeSpend - annualCreativeCost) * factor
-      : 0;
+    const imageProduction = 0;
     const contentHours =
       (inputs.products *
         inputs.updates *
@@ -196,14 +189,6 @@ export default function Home() {
 
     return {
       imageProduction,
-      creativeProjectCost: creativeModel.projectCost,
-      creativeProjectHours: creativeModel.projectHours,
-      aiImageGenerationCost: creativeModel.aiImageGenerationCost,
-      imageStackProductionCost: creativeModel.imageStackProductionCost,
-      aPlusProductionCost: creativeModel.aPlusProductionCost,
-      designerRatePerMinute: creativeModel.designerRatePerMinute,
-      tierMultiplier: creativeModel.tierMultiplier,
-      annualCreativeCost,
       contentOps,
       contentHours,
       assetOps,
@@ -220,10 +205,9 @@ export default function Home() {
       hours,
       threeYear,
     };
-  }, [inputs, factor, useCreative]);
+  }, [inputs, factor]);
 
   const benefits = [
-    ...(useCreative ? [{ name: "Creative production", value: result.imageProduction, color: "#8b5cf6" }] : []),
     { name: "Content operations", value: result.contentOps, color: "#0ea5e9" },
     { name: "Asset operations", value: result.assetOps, color: "#22c55e" },
     { name: "Syndication savings", value: result.syndicationSavings, color: "#ec4899" },
@@ -232,7 +216,6 @@ export default function Home() {
   ];
 
   const benefitDescriptions: Record<string, string> = {
-    "Creative production": "Savings from replacing your current agency or freelance spend with Pattern's AI-assisted production model — same output, lower cost.",
     "Content operations": "Labor value of time recovered when your team stops manually editing and republishing product content across channels. BetterBody Foods reported >50% time saved.",
     "Asset operations": "Time recovered when all assets live in one searchable library instead of Dropbox, email, and shared drives. 100 Percent reduced search time from hours to minutes; Skullcandy generated $650K in ROI from team efficiency gains across 500+ distributors.",
     "Syndication savings": "Labor eliminated by automating per-retailer content pushes. One update in PXM reaches all connected channels simultaneously — no reformatting, no manual uploads. Pattern customers have saved 2,080+ hours per year from automation alone.",
@@ -320,7 +303,7 @@ export default function Home() {
             <div className="card-heading">
               <span className="step">01</span>
               <div style={{ flex: 1 }}>
-                <h2>Pattern Creative Services</h2>
+                <h2>Creative Services</h2>
                 <p>
                   Optional add-on to PXM. Only include this section if Pattern is producing creative for this brand.
                 </p>
@@ -332,91 +315,6 @@ export default function Home() {
                 {useCreative ? "Included" : "Not included"}
               </button>
             </div>
-            {useCreative && (
-              <>
-                <div className="field-grid">
-                  <Field
-                    label="Current annual creative spend"
-                    value={inputs.currentAnnualCreativeSpend}
-                    onChange={(v) => set("currentAnnualCreativeSpend", v)}
-                    prefix="$"
-                    help="What you currently pay annually for Amazon content creation"
-                  />
-                  <Field
-                    label="Products per project"
-                    value={inputs.asinCount}
-                    onChange={(v) => set("asinCount", v)}
-                    min={1}
-                    help="How many individual products are included in one creative project"
-                  />
-                  <Field
-                    label="Design concepts per project"
-                    value={inputs.conceptCount}
-                    onChange={(v) => set("conceptCount", v)}
-                    min={1}
-                    help="How many distinct visual directions are developed — typically 1 for a refresh, 2–3 for a new brand launch"
-                  />
-                  <Field
-                    label="AI images per product"
-                    value={inputs.aiImagesPerAsin}
-                    onChange={(v) => set("aiImagesPerAsin", v)}
-                    min={1}
-                    help="Number of AI-generated images produced per product listing"
-                  />
-                  <Field
-                    label="Projects per year"
-                    value={inputs.annualProjects}
-                    onChange={(v) => set("annualProjects", v)}
-                    min={1}
-                    help="How many creative projects does your brand run in a typical year"
-                  />
-                </div>
-                <div className="model-options">
-                  <div>
-                    <span className="field-label">Delivery tier</span>
-                    <div className="mini-tabs">
-                      <button
-                        className={inputs.creativeTier === "creative" ? "active" : ""}
-                        onClick={() => set("creativeTier", "creative")}
-                      >
-                        Creative only
-                      </button>
-                      <button
-                        className={inputs.creativeTier === "pm" ? "active" : ""}
-                        onClick={() => set("creativeTier", "pm")}
-                      >
-                        Include project management (+20%)
-                      </button>
-                    </div>
-                    <p className="field-help" style={{ marginTop: 8 }}>
-                      Creative only covers design, image production, and A+ content. Adding PM includes project kickoff, timeline management, retailer spec compliance, and stakeholder coordination — adds ~20% to the project cost.
-                    </p>
-                  </div>
-                </div>
-                <div className="model-output">
-                  <span>
-                    <small>Pattern's cost / project</small>
-                    <strong>{money(result.creativeProjectCost)}</strong>
-                  </span>
-                  <span>
-                    <small>Est. time / project</small>
-                    <strong>{result.creativeProjectHours.toFixed(1)} hrs</strong>
-                  </span>
-                  <span>
-                    <small>Pattern's annual cost</small>
-                    <strong>{money(result.annualCreativeCost)}</strong>
-                  </span>
-                  <span className="model-output-savings">
-                    <small>Savings vs. your current spend</small>
-                    {inputs.currentAnnualCreativeSpend === 0 ? (
-                      <span className="model-output-prompt">Enter current spend above to calculate</span>
-                    ) : (
-                      <strong>{money(Math.max(0, inputs.currentAnnualCreativeSpend - result.annualCreativeCost))}</strong>
-                    )}
-                  </span>
-                </div>
-              </>
-            )}
           </section>
 
           <section className="input-card">
@@ -707,69 +605,6 @@ export default function Home() {
           </button>
           {showAssumptions && (
             <div className="logic">
-              {useCreative && <div className="logic-section">
-                <b>Creative production — current inputs</b>
-                <div className="formula-row">
-                  <span>AI image generation</span>
-                  <code>
-                    {inputs.asinCount} product{inputs.asinCount !== 1 ? "s" : ""} ×{" "}
-                    {inputs.aiImagesPerAsin} images × 1 min ×{" "}
-                    {moneyExact(result.designerRatePerMinute)}/min
-                    {result.tierMultiplier !== 1
-                      ? ` × ${result.tierMultiplier}`
-                      : ""}
-                  </code>
-                  <strong>{moneyExact(result.aiImageGenerationCost)}</strong>
-                </div>
-                <div className="formula-row">
-                  <span>Image-stack production</span>
-                  <code>
-                    {inputs.asinCount} product{inputs.asinCount !== 1 ? "s" : ""} ×
-                    9 tasks × blended role rate
-                    {result.tierMultiplier !== 1
-                      ? ` × ${result.tierMultiplier}`
-                      : ""}
-                  </code>
-                  <strong>{moneyExact(result.imageStackProductionCost)}</strong>
-                </div>
-                <div className="formula-row">
-                  <span>A+ content production</span>
-                  <code>
-                    {inputs.asinCount} product{inputs.asinCount !== 1 ? "s" : ""} ×
-                    7 tasks × blended role rate
-                    {result.tierMultiplier !== 1
-                      ? ` × ${result.tierMultiplier}`
-                      : ""}
-                  </code>
-                  <strong>{moneyExact(result.aPlusProductionCost)}</strong>
-                </div>
-                <div className="formula-row total">
-                  <span>Complete project</span>
-                  <code>
-                    onboarding + audits + concepts + production + uploads +
-                    brand content + AI images
-                  </code>
-                  <strong>{moneyExact(result.creativeProjectCost)}</strong>
-                </div>
-                <div className="formula-row">
-                  <span>Annual modeled cost</span>
-                  <code>
-                    {moneyExact(result.creativeProjectCost)} ×{" "}
-                    {inputs.annualProjects} project
-                    {inputs.annualProjects !== 1 ? "s" : ""}
-                  </code>
-                  <strong>{moneyExact(result.annualCreativeCost)}</strong>
-                </div>
-                <div className="formula-row total">
-                  <span>Scenario-adjusted savings</span>
-                  <code>
-                    max(0, {moneyExact(inputs.currentAnnualCreativeSpend)} −{" "}
-                    {moneyExact(result.annualCreativeCost)}) ×{" "}
-                    {factor.toFixed(1)}
-                  </code>
-                  <strong>{moneyExact(result.imageProduction)}</strong>
-                </div>
-              </div>}
               <div className="logic-section">
                 <b>Content operations</b>
                 <div className="formula-row">
