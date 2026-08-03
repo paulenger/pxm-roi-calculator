@@ -27,6 +27,9 @@ type Inputs = {
   syndicationUpdatesPerYear: number;
   syndicationMinutesPerPush: number;
   syndicationAutomation: number;
+  currentPIMCost: number;
+  currentDAMCost: number;
+  currentSyndicationToolCost: number;
   eligibleRevenue: number;
   revenueLift: number;
   grossMargin: number;
@@ -54,6 +57,9 @@ const initial: Inputs = {
   syndicationUpdatesPerYear: 4,
   syndicationMinutesPerPush: 15,
   syndicationAutomation: 80,
+  currentPIMCost: 0,
+  currentDAMCost: 0,
+  currentSyndicationToolCost: 0,
   eligibleRevenue: 10000000,
   revenueLift: 1,
   grossMargin: 40,
@@ -170,13 +176,15 @@ export default function Home() {
         factor) /
       60;
     const syndicationSavings = syndicationHours * inputs.hourlyRate;
+    const toolConsolidation =
+      inputs.currentPIMCost + inputs.currentDAMCost + inputs.currentSyndicationToolCost;
     const revenue =
       inputs.eligibleRevenue *
       (inputs.revenueLift / 100) *
       (inputs.grossMargin / 100) *
       (inputs.attribution / 100) *
       factor;
-    const gross = imageProduction + contentOps + assetOps + syndicationSavings + revenue;
+    const gross = imageProduction + contentOps + assetOps + syndicationSavings + toolConsolidation + revenue;
     const yearOneCost = inputs.annualPXM + inputs.implementation;
     const net = gross - yearOneCost;
     const roi = yearOneCost > 0 ? (net / yearOneCost) * 100 : 0;
@@ -199,6 +207,7 @@ export default function Home() {
       assetOps,
       syndicationSavings,
       syndicationHours,
+      toolConsolidation,
       revenue,
       gross,
       yearOneCost,
@@ -219,6 +228,7 @@ export default function Home() {
     { name: "Content operations", value: result.contentOps, color: "#0ea5e9" },
     { name: "Asset operations", value: result.assetOps, color: "#22c55e" },
     { name: "Syndication savings", value: result.syndicationSavings, color: "#ec4899" },
+    { name: "Tool consolidation", value: result.toolConsolidation, color: "#14b8a6" },
     { name: "Growth contribution", value: result.revenue, color: "#f59e0b" },
   ];
 
@@ -296,10 +306,11 @@ export default function Home() {
             <div className="card-heading">
               <span className="step">01</span>
               <div>
-                <h2>Creative production</h2>
+                <h2>Pattern Creative Services</h2>
                 <p>
-                  See what Pattern charges to produce your content — based on
-                  actual role rates and task times, not estimates.
+                  Optional add-on to PXM. See what Pattern charges to produce
+                  your content — based on actual role rates and task times, not
+                  estimates. Leave current spend at $0 if not applicable.
                 </p>
               </div>
             </div>
@@ -494,6 +505,43 @@ export default function Home() {
             <div className="card-heading">
               <span className="step">04</span>
               <div>
+                <h2>Tool consolidation</h2>
+                <p>
+                  PXM replaces your existing PIM, DAM, and syndication tools.
+                  Enter what you currently pay for each — this is direct cost
+                  displacement, no estimates needed.
+                </p>
+              </div>
+            </div>
+            <div className="field-grid">
+              <Field
+                label="Current PIM tool cost"
+                value={inputs.currentPIMCost}
+                onChange={(v) => set("currentPIMCost", v)}
+                prefix="$"
+                help="Annual cost of your current product information management tool — e.g. Salsify, Akeneo, inRiver"
+              />
+              <Field
+                label="Current DAM tool cost"
+                value={inputs.currentDAMCost}
+                onChange={(v) => set("currentDAMCost", v)}
+                prefix="$"
+                help="Annual cost of your current digital asset management tool — e.g. Bynder, Widen, Brandfolder"
+              />
+              <Field
+                label="Current syndication tool cost"
+                value={inputs.currentSyndicationToolCost}
+                onChange={(v) => set("currentSyndicationToolCost", v)}
+                prefix="$"
+                help="Annual cost of your current content syndication tool — e.g. Syndigo, Feedonomics, ChannelAdvisor"
+              />
+            </div>
+          </section>
+
+          <section className="input-card">
+            <div className="card-heading">
+              <span className="step">05</span>
+              <div>
                 <h2>Growth & investment</h2>
                 <p>If your content performs better, what's the business impact? Enter your own estimate — adjust to reflect your confidence level.</p>
               </div>
@@ -601,8 +649,8 @@ export default function Home() {
                     <i style={{ background: item.color }} />
                     {item.name}
                   </span>
-                  {item.name === "Creative production" && item.value === 0 ? (
-                    <span className="model-output-prompt">Enter current spend ↑</span>
+                  {item.value === 0 && (item.name === "Creative production" || item.name === "Tool consolidation") ? (
+                    <span className="model-output-prompt">Enter above ↑</span>
                   ) : (
                     <strong>{money(item.value)}</strong>
                   )}
