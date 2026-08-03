@@ -258,7 +258,7 @@ h1 { font-size: clamp(38px, 4vw, 64px); letter-spacing: -.045em; line-height: .9
 }
 .formula-row strong { color: white; font-size: 11px; }
 .formula-row.total { border-bottom-color: rgba(0, 167, 255, .35); }
-.proof-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.proof-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .proof-grid div { display: flex; flex-direction: column; gap: 3px; }
 .proof-grid strong { font-size: 18px; }
 .proof-grid span { color: var(--muted); font-size: 9px; line-height: 1.2; }

@@ -504,6 +504,7 @@ export default function Home() {
                 onChange={(v) => set("revenueLift", v)}
                 suffix="%"
                 step={0.1}
+                help="Pattern-managed brands average an 81.56% content match score across their catalogs. Better match score correlates with search visibility and conversion rate. 1–2% is a conservative starting point for brands with previously unoptimized listings."
               />
               <Field
                 label="Gross margin"
@@ -722,6 +723,8 @@ export default function Home() {
               <div><strong>#1</strong><span>Amazon seller globally</span></div>
               <div><strong>700+</strong><span>brands managed</span></div>
               <div><strong>2.3M</strong><span>products in PXM</span></div>
+              <div><strong>7,000+</strong><span>AI content briefs run</span></div>
+              <div><strong>15,000+</strong><span>AI images generated</span></div>
               <div><strong>1,000+</strong><span>marketplaces receiving content</span></div>
             </div>
             <small>
