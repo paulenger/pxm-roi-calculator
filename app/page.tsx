@@ -37,25 +37,25 @@ type Inputs = {
 
 const initial: Inputs = {
   currentAnnualCreativeSpend: 0,
-  asinCount: 1,
+  asinCount: 25,
   conceptCount: 1,
   aiImagesPerAsin: 15,
-  annualProjects: 1,
+  annualProjects: 2,
   creativeTier: "creative",
-  products: 5000,
+  products: 500,
   updates: 2,
   updateMinutes: 30,
   automation: 60,
-  assetRequests: 1000,
+  assetRequests: 500,
   assetMinutesSaved: 20,
   hourlyRate: 50,
-  syndicationSkus: 500,
+  syndicationSkus: 250,
   syndicationChannels: 5,
   syndicationUpdatesPerYear: 4,
   syndicationMinutesPerPush: 15,
   syndicationAutomation: 80,
-  eligibleRevenue: 5000000,
-  revenueLift: 2,
+  eligibleRevenue: 10000000,
+  revenueLift: 1,
   grossMargin: 40,
   attribution: 50,
   annualPXM: 75000,
@@ -601,7 +601,11 @@ export default function Home() {
                     <i style={{ background: item.color }} />
                     {item.name}
                   </span>
-                  <strong>{money(item.value)}</strong>
+                  {item.name === "Creative production" && item.value === 0 ? (
+                    <span className="model-output-prompt">Enter current spend ↑</span>
+                  ) : (
+                    <strong>{money(item.value)}</strong>
+                  )}
                 </div>
               ))}
             </div>
@@ -621,7 +625,7 @@ export default function Home() {
                 <div className="formula-row">
                   <span>AI image generation</span>
                   <code>
-                    {inputs.asinCount} ASIN{inputs.asinCount !== 1 ? "s" : ""} ×{" "}
+                    {inputs.asinCount} product{inputs.asinCount !== 1 ? "s" : ""} ×{" "}
                     {inputs.aiImagesPerAsin} images × 1 min ×{" "}
                     {moneyExact(result.designerRatePerMinute)}/min
                     {result.tierMultiplier !== 1
@@ -633,8 +637,8 @@ export default function Home() {
                 <div className="formula-row">
                   <span>Image-stack production</span>
                   <code>
-                    {inputs.asinCount} ASIN{inputs.asinCount !== 1 ? "s" : ""} ×
-                    9 units × original task/role rate mix
+                    {inputs.asinCount} product{inputs.asinCount !== 1 ? "s" : ""} ×
+                    9 tasks × blended role rate
                     {result.tierMultiplier !== 1
                       ? ` × ${result.tierMultiplier}`
                       : ""}
@@ -642,10 +646,10 @@ export default function Home() {
                   <strong>{moneyExact(result.imageStackProductionCost)}</strong>
                 </div>
                 <div className="formula-row">
-                  <span>A+ production</span>
+                  <span>A+ content production</span>
                   <code>
-                    {inputs.asinCount} ASIN{inputs.asinCount !== 1 ? "s" : ""} ×
-                    7 units × original task/role rate mix
+                    {inputs.asinCount} product{inputs.asinCount !== 1 ? "s" : ""} ×
+                    7 tasks × blended role rate
                     {result.tierMultiplier !== 1
                       ? ` × ${result.tierMultiplier}`
                       : ""}
