@@ -418,17 +418,20 @@ export default function Home() {
                 label="Products in scope"
                 value={inputs.products}
                 onChange={(v) => set("products", v)}
+                help="Total number of SKUs your team actively manages and updates. Mid-market brands typically range 50–300; enterprise 500+."
               />
               <Field
                 label="Updates / product / year"
                 value={inputs.updates}
                 onChange={(v) => set("updates", v)}
+                help="How many times a year does content change per product — seasonal copy, new images, pricing, compliance updates. Pi-validated range: 2–4×."
               />
               <Field
                 label="Minutes / manual update"
                 value={inputs.updateMinutes}
                 onChange={(v) => set("updateMinutes", v)}
                 suffix="min"
+                help="Time to find, edit, and publish one content change today — without PXM. Pattern's Pi data validates 15 min as the most defensible benchmark."
               />
               <Field
                 label="Time saved per content update"
@@ -561,6 +564,7 @@ export default function Home() {
                 value={inputs.eligibleRevenue}
                 onChange={(v) => set("eligibleRevenue", v)}
                 prefix="$"
+                help="The channel revenue that better content could realistically impact — typically your Amazon or ecommerce revenue, not total company revenue."
               />
               <Field
                 label="Your expected revenue lift"
@@ -575,6 +579,7 @@ export default function Home() {
                 value={inputs.grossMargin}
                 onChange={(v) => set("grossMargin", v)}
                 suffix="%"
+                help="Product gross margin — revenue minus cost of goods sold only. This converts revenue lift into profit. Note: Amazon fees, advertising, and fulfillment costs are not deducted here; true contribution margin is typically 10–15 pts lower."
               />
               <Field
                 label="How much of that lift would you credit to better content?"
@@ -593,12 +598,14 @@ export default function Home() {
                 value={inputs.annualPXM}
                 onChange={(v) => set("annualPXM", v)}
                 prefix="$"
+                help="Annual license or platform fee for Pattern PXM. Use the figure from your proposal or a placeholder — this is the cost side of the ROI equation."
               />
               <Field
                 label="One-time implementation"
                 value={inputs.implementation}
                 onChange={(v) => set("implementation", v)}
                 prefix="$"
+                help="One-time cost to onboard, configure, and connect integrations. Amortized across Year 1 only in this model."
               />
             </div>
           </section>
