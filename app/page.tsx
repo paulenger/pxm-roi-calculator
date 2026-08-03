@@ -269,6 +269,12 @@ export default function Home() {
           >
             User guide (PDF)
           </a>
+          <a
+            href="/PXM_Section_Brief.docx"
+            download
+          >
+            Section brief (Word)
+          </a>
           <span className="prototype">VALUE MODEL · V1</span>
         </div>
       </header>
