@@ -37,14 +37,14 @@ type Inputs = {
 };
 
 const initial: Inputs = {
-  currentCostPerImage: 150,
-  asinCount: 25,
-  aiImagesPerAsin: 15,
-  // PDF compat — not shown in UI:
   currentAnnualCreativeSpend: 0,
+  asinCount: 25,
   conceptCount: 1,
-  annualProjects: 1,
-  creativeTier: "ai-gen",
+  annualProjects: 2,
+  creativeTier: "creative",
+  // kept in state, not shown in UI:
+  currentCostPerImage: 150,
+  aiImagesPerAsin: 15,
   products: 150,
   updates: 4,
   updateMinutes: 15,
@@ -97,8 +97,10 @@ const compact = (n: number) =>
     maximumFractionDigits: 1,
   }).format(Number.isFinite(n) ? n : 0);
 
-// 1 min of designer time × $0.14/min — Pattern's internal creative rate model
-const PATTERN_AI_IMAGE_RATE = 0.14;
+// Pattern's internal creative rate model — averaged across 1P ($0.93 AD) and 3P ($0.87 AD) seller types
+const CR = { AD: 0.90, DESIGNER: 0.14, COPYWRITER: 0.12, QA: 0.10, AM: 0.10 } as const;
+// Fixed project overhead: Onboarding (470 min AD) + Audits (105 min AD)
+const CREATIVE_FIXED = (470 + 105) * CR.AD; // $517.50
 
 function Field({
   label,
@@ -152,11 +154,24 @@ export default function Home() {
     setInputs((current) => ({ ...current, [key]: value }));
 
   const result = useMemo(() => {
-    const totalImages = inputs.asinCount * inputs.aiImagesPerAsin;
-    const currentImageCost = totalImages * inputs.currentCostPerImage;
-    const patternImageCost = totalImages * PATTERN_AI_IMAGE_RATE;
+    // Creative project cost built from Pattern's internal task model (avg 1P/3P rates)
+    // Per-concept: Image Stacks + A+ Content concept phases (AD strategy/copy/review + Designer design/prep)
+    const creativePerConceptCost = (185 * CR.AD + 210 * CR.DESIGNER) * 2 * inputs.conceptCount;
+    // Per-ASIN production: Image Stacks (9 images/ASIN) + A+ Content (7 images/ASIN) + uploads
+    const creativePerAsinCost = (
+      (10.8 * CR.COPYWRITER + 2.25 * CR.QA + 1.8 * CR.AD + 10.8 * CR.DESIGNER) + // Image Stacks prod
+      (8.4 * CR.COPYWRITER + 1.75 * CR.QA + 1.4 * CR.AD + 8.4 * CR.DESIGNER) +   // A+ Content prod
+      (0.4 * CR.AM)                                                                  // uploads (both)
+    ) * inputs.asinCount;
+    // Fixed brand content: Brand Story + Brand Store (done once per project)
+    const creativeBrandCost =
+      (195 * CR.AD + 150 * CR.DESIGNER + 9 * CR.AM) +  // Brand Story
+      (195 * CR.AD + 300 * CR.DESIGNER + 9 * CR.AM);   // Brand Store
+    const creativeBase = CREATIVE_FIXED + creativePerConceptCost + creativePerAsinCost + creativeBrandCost;
+    const creativeProjectCost = inputs.creativeTier === "pm" ? creativeBase * 1.2 : creativeBase;
+    const annualCreativeCost = creativeProjectCost * Math.max(1, inputs.annualProjects);
     const imageProduction = useCreative
-      ? Math.max(0, currentImageCost - patternImageCost) * factor
+      ? Math.max(0, inputs.currentAnnualCreativeSpend - annualCreativeCost) * factor
       : 0;
     const contentHours =
       (inputs.products *
@@ -197,9 +212,8 @@ export default function Home() {
 
     return {
       imageProduction,
-      totalImages,
-      currentImageCost,
-      patternImageCost,
+      creativeProjectCost,
+      annualCreativeCost,
       contentOps,
       contentHours,
       assetOps,
@@ -228,7 +242,7 @@ export default function Home() {
   ];
 
   const benefitDescriptions: Record<string, string> = {
-    "Creative production": "Savings from replacing your current agency or photo shoot cost with Pattern's AI-assisted production — same output at $0.14/image vs. $100–$300+ at an agency.",
+    "Creative production": "Savings from replacing your current agency or studio spend with Pattern's creative services — modeled from Pattern's internal task costs across onboarding, image production, A+ content, brand story, and brand store.",
     "Content operations": "Labor value of time recovered when your team stops manually editing and republishing product content across channels. BetterBody Foods reported >50% time saved.",
     "Asset operations": "Time recovered when all assets live in one searchable library instead of Dropbox, email, and shared drives. 100 Percent reduced search time from hours to minutes; Skullcandy generated $650K in ROI from team efficiency gains across 500+ distributors.",
     "Syndication savings": "Labor eliminated by automating per-retailer content pushes. One update in PXM reaches all connected channels simultaneously — no reformatting, no manual uploads. Pattern customers have saved 2,080+ hours per year from automation alone.",
@@ -332,53 +346,78 @@ export default function Home() {
               <>
                 <div className="field-grid">
                   <Field
-                    label="Products getting new images per year"
+                    label="Current annual creative spend"
+                    value={inputs.currentAnnualCreativeSpend}
+                    onChange={(v) => set("currentAnnualCreativeSpend", v)}
+                    prefix="$"
+                    help="What you currently pay annually for Amazon content creation — agency fees, freelancers, or studio costs"
+                  />
+                  <Field
+                    label="Products per project"
                     value={inputs.asinCount}
                     onChange={(v) => set("asinCount", v)}
                     min={1}
-                    help="How many products are you creating or refreshing images for this year"
+                    help="How many individual products are included in one creative project"
                   />
                   <Field
-                    label="Images per product"
-                    value={inputs.aiImagesPerAsin}
-                    onChange={(v) => set("aiImagesPerAsin", v)}
+                    label="Design concepts per project"
+                    value={inputs.conceptCount}
+                    onChange={(v) => set("conceptCount", v)}
                     min={1}
-                    help="Number of images per product listing — a full Amazon image stack is typically 7–15 images"
+                    help="How many distinct visual directions are developed — typically 1 for a refresh, 2–3 for a new brand launch"
                   />
                   <Field
-                    label="Your current cost per image"
-                    value={inputs.currentCostPerImage}
-                    onChange={(v) => set("currentCostPerImage", v)}
-                    prefix="$"
-                    step={10}
-                    help="What you pay today per image — agency retainers typically run $100–$300/image; studio photoshoots $150–$500+ depending on complexity"
+                    label="Projects per year"
+                    value={inputs.annualProjects}
+                    onChange={(v) => set("annualProjects", v)}
+                    min={1}
+                    help="How many creative projects does this brand run in a typical year"
                   />
+                </div>
+                <div className="model-options">
+                  <div>
+                    <span className="field-label">Delivery tier</span>
+                    <div className="mini-tabs">
+                      <button
+                        className={inputs.creativeTier === "creative" ? "active" : ""}
+                        onClick={() => set("creativeTier", "creative")}
+                      >
+                        Creative only
+                      </button>
+                      <button
+                        className={inputs.creativeTier === "pm" ? "active" : ""}
+                        onClick={() => set("creativeTier", "pm")}
+                      >
+                        + Project management (×1.2)
+                      </button>
+                    </div>
+                    <p className="field-help" style={{ marginTop: 8 }}>
+                      Creative only covers design, copy, QA, and production. Adding PM includes kickoff coordination, timeline management, and retailer spec compliance — adds 20% to project cost.
+                    </p>
+                  </div>
                 </div>
                 <div className="model-output">
                   <span>
-                    <small>Total images / year</small>
-                    <strong>{result.totalImages.toLocaleString()}</strong>
+                    <small>Pattern's cost / project</small>
+                    <strong>{money(result.creativeProjectCost)}</strong>
                   </span>
                   <span>
-                    <small>Your current cost</small>
-                    <strong>{money(result.currentImageCost)}</strong>
+                    <small>Projects / year</small>
+                    <strong>{inputs.annualProjects}</strong>
                   </span>
                   <span>
-                    <small>Pattern's cost</small>
-                    <strong>{money(result.patternImageCost)}</strong>
+                    <small>Pattern's annual cost</small>
+                    <strong>{money(result.annualCreativeCost)}</strong>
                   </span>
                   <span className="model-output-savings">
-                    <small>Estimated annual savings</small>
-                    {inputs.currentCostPerImage <= PATTERN_AI_IMAGE_RATE ? (
-                      <span className="model-output-prompt">Your current rate is at or below Pattern's — no savings to model</span>
+                    <small>Savings vs. your current spend</small>
+                    {inputs.currentAnnualCreativeSpend === 0 ? (
+                      <span className="model-output-prompt">Enter current spend above to calculate</span>
                     ) : (
-                      <strong>{money(Math.max(0, result.currentImageCost - result.patternImageCost))}</strong>
+                      <strong>{money(Math.max(0, inputs.currentAnnualCreativeSpend - result.annualCreativeCost))}</strong>
                     )}
                   </span>
                 </div>
-                <p className="field-help" style={{ marginTop: 12 }}>
-                  Pattern's AI image generation costs <strong style={{ color: "white" }}>${PATTERN_AI_IMAGE_RATE.toFixed(2)}/image</strong> — 1 minute of designer time at Pattern's internal rate.
-                </p>
               </>
             )}
           </section>
@@ -675,23 +714,26 @@ export default function Home() {
                 <div className="logic-section">
                   <b>Creative production</b>
                   <div className="formula-row">
-                    <span>Total images</span>
-                    <code>{inputs.asinCount} products × {inputs.aiImagesPerAsin} images/product</code>
-                    <strong>{result.totalImages.toLocaleString()} images</strong>
+                    <span>Pattern's project cost</span>
+                    <code>
+                      Onboarding + Audits + Image Stacks + A+ Content + Brand Story + Brand Store
+                      · {inputs.asinCount} product{inputs.asinCount !== 1 ? "s" : ""}, {inputs.conceptCount} concept{inputs.conceptCount !== 1 ? "s" : ""}
+                      {inputs.creativeTier === "pm" ? " · ×1.2 PM" : ""}
+                    </code>
+                    <strong>{moneyExact(result.creativeProjectCost)}</strong>
                   </div>
                   <div className="formula-row">
-                    <span>Your current cost</span>
-                    <code>{result.totalImages.toLocaleString()} images × {moneyExact(inputs.currentCostPerImage)}/image</code>
-                    <strong>{moneyExact(result.currentImageCost)}</strong>
-                  </div>
-                  <div className="formula-row">
-                    <span>Pattern's cost</span>
-                    <code>{result.totalImages.toLocaleString()} images × ${PATTERN_AI_IMAGE_RATE.toFixed(2)}/image</code>
-                    <strong>{moneyExact(result.patternImageCost)}</strong>
+                    <span>Annual modeled cost</span>
+                    <code>
+                      {moneyExact(result.creativeProjectCost)} × {inputs.annualProjects} project{inputs.annualProjects !== 1 ? "s" : ""}
+                    </code>
+                    <strong>{moneyExact(result.annualCreativeCost)}</strong>
                   </div>
                   <div className="formula-row total">
                     <span>Scenario-adjusted savings</span>
-                    <code>max(0, {moneyExact(result.currentImageCost)} − {moneyExact(result.patternImageCost)}) × {factor.toFixed(1)}</code>
+                    <code>
+                      max(0, {moneyExact(inputs.currentAnnualCreativeSpend)} − {moneyExact(result.annualCreativeCost)}) × {factor.toFixed(1)}
+                    </code>
                     <strong>{moneyExact(result.imageProduction)}</strong>
                   </div>
                 </div>
