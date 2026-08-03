@@ -728,8 +728,9 @@ export default function Home() {
               <div><strong>1,000+</strong><span>marketplaces receiving content</span></div>
             </div>
             <small>
-              Contextual proof points only. Customer ROI is calculated from the
-              editable assumptions above.
+              Based on Pattern's managed brand portfolio of 700+ brands across
+              1,000+ marketplaces. Customer ROI is calculated from the editable
+              assumptions above.
             </small>
           </div>
         </aside>

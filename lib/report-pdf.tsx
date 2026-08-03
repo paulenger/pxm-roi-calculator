@@ -358,6 +358,29 @@ export function ReportPDF({ inputs, result, scenario, generatedAt }: Props) {
           </View>
         </View>
 
+        {/* Pattern portfolio context */}
+        <View style={{ marginTop: 20, padding: 14, backgroundColor: "#0f1522", borderRadius: 6 }}>
+          <Text style={{ fontSize: 7, color: "#00a7ff", marginBottom: 8, letterSpacing: 0.5 }}>PATTERN AT SCALE</Text>
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            {[
+              { stat: "#1", label: "Amazon seller globally" },
+              { stat: "700+", label: "brands managed" },
+              { stat: "2.3M", label: "products in PXM" },
+              { stat: "7,000+", label: "AI content briefs run" },
+              { stat: "15,000+", label: "AI images generated" },
+              { stat: "1,000+", label: "marketplaces receiving content" },
+            ].map(({ stat, label }) => (
+              <View key={label} style={{ flex: 1 }}>
+                <Text style={{ fontSize: 11, color: "white", fontWeight: "bold" }}>{stat}</Text>
+                <Text style={{ fontSize: 7, color: "#69758a", lineHeight: 1.3 }}>{label}</Text>
+              </View>
+            ))}
+          </View>
+          <Text style={{ fontSize: 7, color: "#69758a", marginTop: 8 }}>
+            Based on Pattern's managed brand portfolio of 700+ brands across 1,000+ marketplaces.
+          </Text>
+        </View>
+
         {/* Footer */}
         <View style={s.footer}>
           <Text style={s.disclaimer}>
