@@ -298,8 +298,8 @@ export default function Home() {
               <div>
                 <h2>Creative production</h2>
                 <p>
-                  Uses the exact task, role, rate, and scaling model from the
-                  supplied creative overhead calculator.
+                  See what Pattern charges to produce your content — based on
+                  actual role rates and task times, not estimates.
                 </p>
               </div>
             </div>
@@ -312,29 +312,32 @@ export default function Home() {
                 help="What you currently pay annually for Amazon content creation"
               />
               <Field
-                label="ASIN count / project"
+                label="Products per project"
                 value={inputs.asinCount}
                 onChange={(v) => set("asinCount", v)}
                 min={1}
+                help="How many individual products are included in one creative project"
               />
               <Field
-                label="Concept count / project"
+                label="Design concepts per project"
                 value={inputs.conceptCount}
                 onChange={(v) => set("conceptCount", v)}
                 min={1}
+                help="How many distinct visual directions are developed — typically 1 for a refresh, 2–3 for a new brand launch"
               />
               <Field
-                label="AI images / ASIN"
+                label="AI images per product"
                 value={inputs.aiImagesPerAsin}
                 onChange={(v) => set("aiImagesPerAsin", v)}
                 min={1}
-                help="AI-generated images to produce per product listing"
+                help="Number of AI-generated images produced per product listing"
               />
               <Field
-                label="Projects / year"
+                label="Projects per year"
                 value={inputs.annualProjects}
                 onChange={(v) => set("annualProjects", v)}
                 min={1}
+                help="How many creative projects does your brand run in a typical year"
               />
             </div>
             <div className="model-options">
@@ -353,7 +356,7 @@ export default function Home() {
                     className={inputs.creativeTier === "pm" ? "active" : ""}
                     onClick={() => set("creativeTier", "pm")}
                   >
-                    + PM (×1.2)
+                    Include project management (+20%)
                   </button>
                 </div>
               </div>
@@ -387,7 +390,7 @@ export default function Home() {
               <span className="step">02</span>
               <div>
                 <h2>Content & asset operations</h2>
-                <p>Time returned through automation and a single source of truth.</p>
+                <p>Estimate the hours your team spends on manual content updates and asset retrieval today — and what goes away with PXM.</p>
               </div>
             </div>
             <div className="field-grid">
@@ -408,27 +411,31 @@ export default function Home() {
                 suffix="min"
               />
               <Field
-                label="Workflow time reduction"
+                label="Time saved per content update"
                 value={inputs.automation}
                 onChange={(v) => set("automation", v)}
                 suffix="%"
+                help="What portion of manual update time disappears when content is managed in one place. A reasonable starting point is 50–70%."
               />
               <Field
-                label="Asset requests / year"
+                label="Internal asset requests per year"
                 value={inputs.assetRequests}
                 onChange={(v) => set("assetRequests", v)}
+                help="How many times per year does your team search for, request, or re-send a product image, logo, or file"
               />
               <Field
-                label="Minutes saved / request"
+                label="Minutes saved per request"
                 value={inputs.assetMinutesSaved}
                 onChange={(v) => set("assetMinutesSaved", v)}
                 suffix="min"
+                help="Time saved when assets are in a single searchable library vs. tracked down across email, Dropbox, or shared drives"
               />
               <Field
-                label="Loaded hourly rate"
+                label="Team hourly rate"
                 value={inputs.hourlyRate}
                 onChange={(v) => set("hourlyRate", v)}
                 prefix="$"
+                help="Fully-loaded cost per hour including salary, benefits, and overhead. Typical range: $45–$65/hr"
               />
             </div>
           </section>
@@ -446,39 +453,39 @@ export default function Home() {
             </div>
             <div className="field-grid">
               <Field
-                label="SKUs in syndication scope"
+                label="Products being syndicated"
                 value={inputs.syndicationSkus}
                 onChange={(v) => set("syndicationSkus", v)}
                 min={1}
-                help="Number of products being distributed across channels"
+                help="How many products are you distributing across retailers and marketplaces"
               />
               <Field
-                label="Retailer / marketplace channels"
+                label="Number of retail channels"
                 value={inputs.syndicationChannels}
                 onChange={(v) => set("syndicationChannels", v)}
                 min={1}
-                help="Distinct destinations receiving content (Amazon, Walmart, Target, etc.)"
+                help="How many distinct destinations receive your content — Amazon, Walmart, Target, your website, etc."
               />
               <Field
-                label="Content updates / SKU / year"
+                label="Content updates per product per year"
                 value={inputs.syndicationUpdatesPerYear}
                 onChange={(v) => set("syndicationUpdatesPerYear", v)}
                 min={1}
-                help="How many times per year content changes (seasonal, pricing, copy refreshes)"
+                help="How many times a year does product content change — seasonal refreshes, pricing, copy updates, new images"
               />
               <Field
-                label="Minutes to push one SKU to one channel"
+                label="Minutes to manually update one product at one retailer"
                 value={inputs.syndicationMinutesPerPush}
                 onChange={(v) => set("syndicationMinutesPerPush", v)}
                 suffix="min"
-                help="Manual time to copy, format, and submit content to a single retailer"
+                help="How long does it take to copy, format, and submit updated content to a single retailer today"
               />
               <Field
-                label="Syndication automation"
+                label="How much of that work does PXM eliminate"
                 value={inputs.syndicationAutomation}
                 onChange={(v) => set("syndicationAutomation", v)}
                 suffix="%"
-                help="Portion of manual push work eliminated by PXM auto-syndication"
+                help="PXM auto-syndicates content to all connected channels from one update. Most brands see 70–90% of manual push work eliminated."
               />
             </div>
           </section>
@@ -488,7 +495,7 @@ export default function Home() {
               <span className="step">04</span>
               <div>
                 <h2>Growth & investment</h2>
-                <p>Conservatively attribute incremental contribution to PXM.</p>
+                <p>If your content performs better, what's the business impact? Enter your own estimate — adjust to reflect your confidence level.</p>
               </div>
             </div>
             <div className="field-grid">
@@ -499,12 +506,12 @@ export default function Home() {
                 prefix="$"
               />
               <Field
-                label="Expected revenue lift"
+                label="Your expected revenue lift"
                 value={inputs.revenueLift}
                 onChange={(v) => set("revenueLift", v)}
                 suffix="%"
                 step={0.1}
-                help="Pattern-managed brands average an 81.56% content match score across their catalogs. Better match score correlates with search visibility and conversion rate. 1–2% is a conservative starting point for brands with previously unoptimized listings."
+                help="This is your estimate, not Pattern's claim. Pattern-managed brands average an 81.56% content match score — better content visibility correlates with higher conversion. Most brands start conservatively at 1–2% and adjust based on their catalog's current content quality."
               />
               <Field
                 label="Gross margin"
@@ -513,11 +520,11 @@ export default function Home() {
                 suffix="%"
               />
               <Field
-                label="PXM attribution"
+                label="How much of that lift would you credit to better content?"
                 value={inputs.attribution}
                 onChange={(v) => set("attribution", v)}
                 suffix="%"
-                help="Share of modeled lift credited to PXM"
+                help="Content quality is one driver of revenue lift — not the only one. 40–60% is a reasonable attribution for brands where content is a known gap."
               />
             </div>
             <div className="field-section-divider">
