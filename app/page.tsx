@@ -205,7 +205,9 @@ export default function Home() {
       tierMultiplier: creativeModel.tierMultiplier,
       annualCreativeCost,
       contentOps,
+      contentHours,
       assetOps,
+      assetHours,
       syndicationSavings,
       syndicationHours,
       toolConsolidation,
@@ -228,6 +230,15 @@ export default function Home() {
     { name: "Tool consolidation", value: result.toolConsolidation, color: "#14b8a6" },
     { name: "Growth contribution", value: result.revenue, color: "#f59e0b" },
   ];
+
+  const benefitDescriptions: Record<string, string> = {
+    "Creative production": "Savings from replacing your current agency or freelance spend with Pattern's AI-assisted production model — same output, lower cost.",
+    "Content operations": "Labor value of time recovered when your team stops manually editing and republishing product content across channels. BetterBody Foods reported >50% time saved.",
+    "Asset operations": "Time recovered when all assets live in one searchable library instead of Dropbox, email, and shared drives. 100 Percent reduced search time from hours to minutes; Skullcandy generated $650K in ROI from team efficiency gains across 500+ distributors.",
+    "Syndication savings": "Labor eliminated by automating per-retailer content pushes. One update in PXM reaches all connected channels simultaneously — no reformatting, no manual uploads. Pattern customers have saved 2,080+ hours per year from automation alone.",
+    "Tool consolidation": "Direct cost displacement — the annual fees you stop paying for separate PIM, DAM, and syndication tools. No estimates needed; it's dollar-for-dollar.",
+    "Growth contribution": "Estimated gross profit from incremental revenue driven by better-performing ecommerce content. This is your estimate, not Pattern's claim — set it to zero if you prefer to lead with efficiency savings only.",
+  };
 
   const handleDownloadPDF = async () => {
     const now = new Date().toLocaleDateString("en-US", {
@@ -377,6 +388,9 @@ export default function Home() {
                         Include project management (+20%)
                       </button>
                     </div>
+                    <p className="field-help" style={{ marginTop: 8 }}>
+                      Creative only covers design, image production, and A+ content. Adding PM includes project kickoff, timeline management, retailer spec compliance, and stakeholder coordination — adds ~20% to the project cost.
+                    </p>
                   </div>
                 </div>
                 <div className="model-output">
@@ -627,18 +641,22 @@ export default function Home() {
             <div>
               <span>Year-one ROI</span>
               <strong>{Math.round(result.roi)}%</strong>
+              <small>Net value ÷ year-one cost × 100. How much you get back for every dollar invested.</small>
             </div>
             <div>
               <span>Payback</span>
               <strong>{result.payback.toFixed(1)} mo</strong>
+              <small>Months until cumulative benefits fully cover the year-one investment.</small>
             </div>
             <div>
               <span>3-year net value</span>
               <strong>{money(result.threeYear)}</strong>
+              <small>Annual benefit × 3, minus 3 years of license fees and one-time implementation.</small>
             </div>
             <div>
               <span>Year-one investment</span>
               <strong>{money(result.yearOneCost)}</strong>
+              <small>Annual PXM license plus one-time implementation — the full cost basis for Year 1.</small>
             </div>
           </div>
 
@@ -660,15 +678,20 @@ export default function Home() {
             </div>
             <div className="benefit-list">
               {benefits.map((item) => (
-                <div key={item.name}>
-                  <span>
-                    <i style={{ background: item.color }} />
-                    {item.name}
-                  </span>
-                  {item.value === 0 && (item.name === "Creative production" || item.name === "Tool consolidation") ? (
-                    <span className="model-output-prompt">Enter above ↑</span>
-                  ) : (
-                    <strong>{money(item.value)}</strong>
+                <div key={item.name} className="benefit-item">
+                  <div className="benefit-item-row">
+                    <span>
+                      <i style={{ background: item.color }} />
+                      {item.name}
+                    </span>
+                    {item.value === 0 && (item.name === "Creative production" || item.name === "Tool consolidation") ? (
+                      <span className="model-output-prompt">Enter above ↑</span>
+                    ) : (
+                      <strong>{money(item.value)}</strong>
+                    )}
+                  </div>
+                  {benefitDescriptions[item.name] && (
+                    <p className="benefit-desc">{benefitDescriptions[item.name]}</p>
                   )}
                 </div>
               ))}
@@ -747,18 +770,53 @@ export default function Home() {
                   <strong>{moneyExact(result.imageProduction)}</strong>
                 </div>
               </div>}
-              <p>
-                <b>Operations:</b> annual task volume × minutes saved × loaded
-                hourly rate.
-              </p>
               <div className="logic-section">
-                <b>Syndication savings — current inputs</b>
+                <b>Content operations</b>
+                <div className="formula-row">
+                  <span>Annual update volume</span>
+                  <code>
+                    {inputs.products.toLocaleString()} products × {inputs.updates} updates/yr
+                  </code>
+                  <strong>{(inputs.products * inputs.updates).toLocaleString()} updates</strong>
+                </div>
+                <div className="formula-row">
+                  <span>Minutes saved</span>
+                  <code>
+                    {(inputs.products * inputs.updates).toLocaleString()} updates × {inputs.updateMinutes} min × {inputs.automation}% time saved
+                  </code>
+                  <strong>{Math.round(inputs.products * inputs.updates * inputs.updateMinutes * (inputs.automation / 100)).toLocaleString()} min</strong>
+                </div>
+                <div className="formula-row total">
+                  <span>Scenario-adjusted value</span>
+                  <code>
+                    {result.contentHours.toFixed(0)} hrs × ${inputs.hourlyRate}/hr × {factor.toFixed(1)}
+                  </code>
+                  <strong>{moneyExact(result.contentOps)}</strong>
+                </div>
+              </div>
+              <div className="logic-section">
+                <b>Asset operations</b>
+                <div className="formula-row">
+                  <span>Minutes saved / year</span>
+                  <code>
+                    {inputs.assetRequests.toLocaleString()} requests × {inputs.assetMinutesSaved} min saved
+                  </code>
+                  <strong>{(inputs.assetRequests * inputs.assetMinutesSaved).toLocaleString()} min</strong>
+                </div>
+                <div className="formula-row total">
+                  <span>Scenario-adjusted value</span>
+                  <code>
+                    {result.assetHours.toFixed(0)} hrs × ${inputs.hourlyRate}/hr × {factor.toFixed(1)}
+                  </code>
+                  <strong>{moneyExact(result.assetOps)}</strong>
+                </div>
+              </div>
+              <div className="logic-section">
+                <b>Syndication savings</b>
                 <div className="formula-row">
                   <span>Manual pushes / year</span>
                   <code>
-                    {inputs.syndicationSkus.toLocaleString()} SKUs ×{" "}
-                    {inputs.syndicationChannels} channels ×{" "}
-                    {inputs.syndicationUpdatesPerYear} updates
+                    {inputs.syndicationSkus.toLocaleString()} SKUs × {inputs.syndicationChannels} channels × {inputs.syndicationUpdatesPerYear} updates
                   </code>
                   <strong>
                     {(inputs.syndicationSkus * inputs.syndicationChannels * inputs.syndicationUpdatesPerYear).toLocaleString()}
@@ -767,8 +825,7 @@ export default function Home() {
                 <div className="formula-row">
                   <span>Minutes eliminated</span>
                   <code>
-                    {(inputs.syndicationSkus * inputs.syndicationChannels * inputs.syndicationUpdatesPerYear).toLocaleString()} pushes ×{" "}
-                    {inputs.syndicationMinutesPerPush} min × {inputs.syndicationAutomation}% automated
+                    {(inputs.syndicationSkus * inputs.syndicationChannels * inputs.syndicationUpdatesPerYear).toLocaleString()} pushes × {inputs.syndicationMinutesPerPush} min × {inputs.syndicationAutomation}% automated
                   </code>
                   <strong>
                     {Math.round(inputs.syndicationSkus * inputs.syndicationChannels * inputs.syndicationUpdatesPerYear * inputs.syndicationMinutesPerPush * (inputs.syndicationAutomation / 100)).toLocaleString()} min
@@ -782,12 +839,40 @@ export default function Home() {
                   <strong>{moneyExact(result.syndicationSavings)}</strong>
                 </div>
               </div>
+              <div className="logic-section">
+                <b>Tool consolidation</b>
+                <div className="formula-row">
+                  <span>PIM + DAM + Syndication</span>
+                  <code>
+                    {moneyExact(inputs.currentPIMCost)} + {moneyExact(inputs.currentDAMCost)} + {moneyExact(inputs.currentSyndicationToolCost)}
+                  </code>
+                  <strong>{moneyExact(result.toolConsolidation)}</strong>
+                </div>
+                <div className="formula-row total">
+                  <span>Note</span>
+                  <code>Direct cost displacement — not adjusted by scenario multiplier</code>
+                  <strong>{moneyExact(result.toolConsolidation)}</strong>
+                </div>
+              </div>
+              <div className="logic-section">
+                <b>Growth contribution</b>
+                <div className="formula-row">
+                  <span>Gross profit lift</span>
+                  <code>
+                    {money(inputs.eligibleRevenue)} × {inputs.revenueLift}% lift × {inputs.grossMargin}% GM × {inputs.attribution}% attribution
+                  </code>
+                  <strong>{moneyExact(inputs.eligibleRevenue * (inputs.revenueLift / 100) * (inputs.grossMargin / 100) * (inputs.attribution / 100))}</strong>
+                </div>
+                <div className="formula-row total">
+                  <span>Scenario-adjusted value</span>
+                  <code>
+                    {moneyExact(inputs.eligibleRevenue * (inputs.revenueLift / 100) * (inputs.grossMargin / 100) * (inputs.attribution / 100))} × {factor.toFixed(1)}
+                  </code>
+                  <strong>{moneyExact(result.revenue)}</strong>
+                </div>
+              </div>
               <p>
-                <b>Growth:</b> eligible revenue × lift × gross margin × PXM
-                attribution.
-              </p>
-              <p>
-                All benefits are adjusted by the selected realization scenario.
+                All benefits except tool consolidation are adjusted by the selected realization scenario ({scenarios[scenario].label} = {factor.toFixed(1)}×).
               </p>
             </div>
           )}
@@ -818,10 +903,9 @@ export default function Home() {
         </div>
         <div className="evidence-items">
           <article>
-            <strong>Skullcandy</strong>
+            <strong>Skullcandy — $650K ROI</strong>
             <span>
-              Eliminated redundant content re-entry across retailers — content
-              created once, distributed everywhere automatically
+              Needed alignment across hundreds of SKUs and 500+ distributors. Replaced Dropbox and email with PXM as the single source of truth for all product content and assets. $650K in ROI from team efficiency and optimization gains.
             </span>
           </article>
           <article>

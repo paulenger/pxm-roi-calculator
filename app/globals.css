@@ -230,17 +230,20 @@ h1 { font-size: clamp(38px, 4vw, 64px); letter-spacing: -.045em; line-height: .9
 .metric-grid div { background: var(--panel); padding: 18px; }
 .metric-grid span { color: var(--muted); font-size: 11px; display: block; margin-bottom: 8px; }
 .metric-grid strong { font-size: 20px; }
+.metric-grid small { display: block; color: #6f7a8d; font-size: 9px; margin-top: 6px; line-height: 1.4; }
 .benefit-card, .proof-card { padding: 22px; }
 .section-title { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .section-title h3 { margin: 0; font-size: 14px; }
 .section-title span { color: var(--muted); font-weight: 700; font-size: 13px; }
 .stacked-bar { height: 9px; display: flex; overflow: hidden; border-radius: 99px; margin: 18px 0; background: #0b101b; }
 .stacked-bar span { min-width: 0; }
-.benefit-list { display: grid; gap: 11px; }
-.benefit-list div { display: flex; justify-content: space-between; align-items: center; color: #c2cad8; font-size: 12px; }
-.benefit-list span { display: flex; align-items: center; gap: 8px; }
-.benefit-list i { width: 8px; height: 8px; border-radius: 50%; }
+.benefit-list { display: grid; gap: 14px; }
+.benefit-item { display: flex; flex-direction: column; gap: 4px; }
+.benefit-item-row { display: flex; justify-content: space-between; align-items: center; color: #c2cad8; font-size: 12px; }
+.benefit-item-row span { display: flex; align-items: center; gap: 8px; }
+.benefit-list i { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .benefit-list strong { color: white; }
+.benefit-desc { margin: 0; color: #6f7a8d; font-size: 10px; line-height: 1.4; padding-left: 16px; }
 .download-btn {
   width: 100%;
   padding: 13px 16px;
