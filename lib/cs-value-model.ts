@@ -1,6 +1,7 @@
 export type CsActivityCategory =
   | "content"
   | "bulk"
+  | "automation"
   | "asset"
   | "syndication"
   | "import"
@@ -81,6 +82,7 @@ export type CsValueResult = {
 const EMPTY_CATEGORIES: Record<CsActivityCategory, number> = {
   content: 0,
   bulk: 0,
+  automation: 0,
   asset: 0,
   syndication: 0,
   import: 0,
@@ -92,13 +94,18 @@ const EMPTY_CATEGORIES: Record<CsActivityCategory, number> = {
  * The Count column does not mean the same thing on every tab. On Shares and
  * Downloads it counts human tasks. On Updates it counts records and attributes
  * touched, which a single bulk edit or API push can run into the thousands.
- * Pricing those at a per-task rate is what produces impossible totals, so they
- * are classified separately and valued per record instead.
+ *
+ * Trust rule: API and System Generated volume is throughput, not labor saved.
+ * It is counted and shown, but never converted to dollars. Only human-driven
+ * activity is dollarized, and human record volume is still priced per record
+ * rather than per task.
  */
-export function classifyAction(action: string): CsActivityCategory {
+export function classifyAction(action: string, automated = false): CsActivityCategory {
   const value = action.trim().toLowerCase();
 
-  // Priority matters: "Publish To Channel" is syndication value, not an update.
+  // Machine-run and API volume is throughput. Do not convert it to labor dollars.
+  if (automated || isApiAction(value)) return "automation";
+
   if (
     value.includes("syndicat") ||
     value.includes("publish to channel") ||
@@ -114,11 +121,7 @@ export function classifyAction(action: string): CsActivityCategory {
     return "asset";
   }
   if (value.includes("import")) return "import";
-  if (
-    value.includes("attribute") ||
-    value.includes("api") ||
-    value.includes("update")
-  ) {
+  if (value.includes("attribute") || value.includes("update")) {
     return "bulk";
   }
   if (
@@ -132,14 +135,22 @@ export function classifyAction(action: string): CsActivityCategory {
   return "other";
 }
 
-// Machine-run changes still count as records maintained, but no person spent
-// time on them, so they are reported separately from human activity.
 const AUTOMATION_USERS = new Set(["system generated", "system", "api", "integration"]);
 
-function isAutomatedActor(user: string, action: string): boolean {
+function isApiAction(value: string): boolean {
+  return (
+    value.includes("api update") ||
+    value.includes("api created") ||
+    /\bapi\b/.test(value)
+  );
+}
+
+export function isAutomatedActor(user: string, action = ""): boolean {
   const actor = user.trim().toLowerCase();
+  if (!actor) return isApiAction(action.toLowerCase());
   if (AUTOMATION_USERS.has(actor)) return true;
-  return !actor && action.toLowerCase().includes("api");
+  if (actor.includes("system generated") || actor.startsWith("system ")) return true;
+  return isApiAction(action.toLowerCase());
 }
 
 function normalizeHeader(value: string): string {
@@ -227,14 +238,16 @@ export function parseActivityTable(
       FAILED_STATUSES.has(cellString(record[statusIndex]).toLowerCase());
     const user =
       userIndex >= 0 ? cellString(record[userIndex]).replace(/\s+/g, " ") : "";
+    const combined = `${fallbackAction} ${action}`.trim();
+    const automated = isAutomatedActor(user, combined);
     parsed.push({
       date,
       user,
       hostname: hostIndex >= 0 ? cellString(record[hostIndex]) : "",
       count,
       action,
-      category: failed ? "other" : classifyAction(`${fallbackAction} ${action}`.trim()),
-      automated: isAutomatedActor(user, `${fallbackAction} ${action}`),
+      category: failed ? "other" : classifyAction(combined, automated),
+      automated,
     });
   }
   return parsed;
@@ -379,7 +392,7 @@ export function summarizeActivity(
   const people = new Set(
     [...rows.map((row) => row.user), ...(rosterUsers ?? [])]
       .map((name) => name.trim().toLowerCase())
-      .filter((name) => name && name !== "system generated"),
+      .filter((name) => name && !isAutomatedActor(name)),
   );
   return {
     brand: hostnames.length === 1 ? hostnames[0] : hostnames.join(", "),
@@ -408,8 +421,8 @@ export function calculateCsValue(
   const contentHours =
     (activity.byCategory.content * assumptions.contentMinutesSaved) / 60;
 
-  // Nobody would have hand-maintained every record a bulk edit touched, so only
-  // the realized share of that volume is credited, at a per-record rate.
+  // Human record volume only. API / System Generated throughput is excluded
+  // from hours and dollars so the headline number stays defensible in a QBR.
   const realization = Math.min(Math.max(assumptions.bulkRealizationPercent, 0), 100) / 100;
   const billableBulkCount = activity.byCategory.bulk * realization;
   const bulkHours = (billableBulkCount * assumptions.bulkSecondsSaved) / 3600;

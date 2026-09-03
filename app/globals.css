@@ -196,7 +196,19 @@ h1 { font-size: clamp(38px, 4vw, 64px); letter-spacing: -.045em; line-height: .9
   font-size: 11px;
   line-height: 1.45;
 }
-.cs-context-note strong { color: #dbe2ee; font-size: 11px; }
+.cs-throughput {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px solid rgba(116, 38, 255, .45);
+  background: rgba(116, 38, 255, .08);
+  border-radius: 12px;
+  padding: 14px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.cs-throughput strong { color: #e9e0ff; font-size: 11px; }
 
 .cs-capacity {
   display: grid;

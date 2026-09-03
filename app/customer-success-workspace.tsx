@@ -24,7 +24,8 @@ const DEFAULT_ASSUMPTIONS: CsValueAssumptions = {
 
 const CATEGORY_LABELS: Record<string, string> = {
   content: "Content ops",
-  bulk: "Record & attribute volume",
+  bulk: "Human record edits",
+  automation: "API / system — not dollarized",
   asset: "Asset access",
   syndication: "Syndication",
   import: "Context only",
@@ -195,13 +196,13 @@ export default function CustomerSuccessWorkspace() {
   const valueRows = activity && result
     ? [
         {
-          name: "Record & attribute maintenance",
+          name: "Human record & attribute edits",
           count: activity.byCategory.bulk,
           minutes: assumptions.bulkSecondsSaved / 60,
           hours: result.bulkHours,
           value: result.bulkValue,
           color: "#7426ff",
-          detail: `${activity.byCategory.bulk.toLocaleString()} records touched × ${assumptions.bulkRealizationPercent}% realized × ${assumptions.bulkSecondsSaved}s = ${number(result.bulkHours)} hours`,
+          detail: `${activity.byCategory.bulk.toLocaleString()} human-driven records × ${assumptions.bulkRealizationPercent}% realized × ${assumptions.bulkSecondsSaved}s = ${number(result.bulkHours)} hours. API volume is excluded.`,
         },
         {
           name: "Content operations",
@@ -235,16 +236,18 @@ export default function CustomerSuccessWorkspace() {
       <section className="hero cs-hero">
         <div>
           <p className="eyebrow">Prove realized customer value</p>
-          <h1>What did PXM help this brand accomplish?</h1>
+          <h1>What labor did people avoid because of PXM?</h1>
           <p className="hero-copy">
-            Import observed brand activity, apply transparent time-saving
-            assumptions, and compare value with PXM investment over the same period.
+            Headline dollars come only from human-driven activity. API and
+            System Generated volume is shown as throughput, not converted to
+            hours or dollars.
           </p>
         </div>
         <div className="cs-method-note">
-          <strong>Observed activity first</strong>
+          <strong>Trust the number first</strong>
           <span>
-            Counts come from the export. Only minutes and cost assumptions are editable.
+            If a QBR audience cannot defend it as avoided human work, it does not
+            belong in the dollar total.
           </span>
         </div>
       </section>
@@ -361,7 +364,7 @@ export default function CustomerSuccessWorkspace() {
                     onChange={(value) => setAssumption("bulkSecondsSaved", value)}
                     suffix="sec"
                     step={5}
-                    help="Updates counts records and attributes, not tasks. Price them per record."
+                    help="Applies only to human-driven attribute edits. API and System Generated volume is never dollarized."
                   />
                   <AssumptionField
                     label="Share of record volume realized"
@@ -371,7 +374,7 @@ export default function CustomerSuccessWorkspace() {
                     }
                     suffix="%"
                     step={5}
-                    help="No team would hand-maintain every record a bulk edit touched. 25% is conservative."
+                    help="Share of human record volume a team would have maintained by hand. API volume is excluded first."
                   />
                   <AssumptionField
                     label="Minutes saved per content action"
@@ -444,7 +447,7 @@ export default function CustomerSuccessWorkspace() {
           ) : (
             <>
               <div className="result-hero">
-                <p>Value supported by this period</p>
+                <p>Defensible labor value this period</p>
                 <strong>{money(result.periodValue)}</strong>
                 <span>
                   {number(result.totalHours)} estimated hours returned ·{" "}
@@ -513,7 +516,7 @@ export default function CustomerSuccessWorkspace() {
 
               <div className="benefit-card">
                 <div className="section-title">
-                  <h3>Observed value by lever</h3>
+                  <h3>Labor we can defend in a QBR</h3>
                   <span>{money(result.periodValue)}</span>
                 </div>
                 <div className="benefit-list">
@@ -535,6 +538,18 @@ export default function CustomerSuccessWorkspace() {
                   ))}
                 </div>
               </div>
+
+              {activity.byCategory.automation > 0 && (
+                <div className="cs-throughput">
+                  <strong>Automated throughput — shown, not dollarized</strong>
+                  <span>
+                    {activity.byCategory.automation.toLocaleString()} API or System
+                    Generated records. This is evidence of scale PXM processed. It is
+                    not converted to hours or dollars because no person would have
+                    done that work by hand at that volume.
+                  </span>
+                </div>
+              )}
 
               <div className="benefit-card">
                 <div className="section-title">
@@ -609,13 +624,15 @@ export default function CustomerSuccessWorkspace() {
               )}
 
               {activity.byCategory.import > 0 ||
-              activity.byCategory.other > 0 ? (
+              activity.byCategory.other > 0 ||
+              activity.byCategory.automation > 0 ? (
                 <div className="cs-context-note">
-                  <strong>Activity shown as context, not dollarized</strong>
+                  <strong>Excluded from the dollar total</strong>
                   <span>
-                    {activity.byCategory.import.toLocaleString()} import actions ·{" "}
-                    {activity.byCategory.other.toLocaleString()} other actions. These
-                    are excluded from value to reduce double-counting.
+                    {activity.byCategory.automation.toLocaleString()} API / system
+                    records · {activity.byCategory.import.toLocaleString()} imports ·{" "}
+                    {activity.byCategory.other.toLocaleString()} other. These stay
+                    visible as activity, not as labor savings.
                   </span>
                 </div>
               ) : null}

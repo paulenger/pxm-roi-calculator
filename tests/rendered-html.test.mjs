@@ -86,7 +86,8 @@ test("reads every workbook tab and skips Active Users rollups", async () => {
   ]);
   const summary = model.summarizeActivity(rows);
 
-  assert.equal(summary.byCategory.bulk, 2);
+  assert.equal(summary.byCategory.automation, 1);
+  assert.equal(summary.byCategory.bulk, 1);
   assert.equal(summary.byCategory.asset, 2);
   assert.equal(summary.byCategory.syndication, 1);
   assert.equal(summary.totalActions, 5);
@@ -119,13 +120,58 @@ test("counts update volume as records, not as human tasks", async () => {
     annualPxmInvestment: 31_000,
   });
 
-  assert.equal(summary.byCategory.bulk, 254_064);
+  assert.equal(summary.byCategory.bulk, 120_000);
+  assert.equal(summary.byCategory.automation, 134_064);
   assert.equal(summary.byCategory.content, 0);
   assert.equal(summary.automatedActions, 134_064);
 
-  // Pricing 254,064 records at a 9-minute task rate implied 38,347 hours.
-  assert.ok(result.bulkHours < 1_000, `bulk hours were ${result.bulkHours}`);
-  assert.equal(Math.round(result.periodValue), 26_465);
+  // API volume must not enter the dollar total. Only the 120,000 human records do.
+  assert.equal(Math.round(result.periodValue), 12_500);
+  assert.ok(result.bulkHours < 300, `bulk hours were ${result.bulkHours}`);
+});
+
+test("does not convert API or System Generated volume into dollars", async () => {
+  const model = await loadCsModel();
+  const rows = model.parseActivitySheets([
+    {
+      name: "Updates",
+      rows: [
+        ["Date", "User", "Hostname", "Count", "Action"],
+        ["7/10/2026", "Peter Jakl", "helmethouse", 80, "Attribute(s) Updated"],
+        ["7/11/2026", "Peter Jakl", "helmethouse", 50_000, "API Update"],
+        ["7/12/2026", "System Generated", "helmethouse", 90_000, "Attribute(s) Updated"],
+      ],
+    },
+    {
+      name: "Shares",
+      rows: [
+        ["Date", "User", "Hostname", "Count", "Action"],
+        ["7/6/2026", "Grant Wheeler", "helmethouse", 10, "Share"],
+      ],
+    },
+  ]);
+  const summary = model.summarizeActivity(rows, {
+    start: new Date("2026-07-04T00:00:00"),
+    end: new Date("2026-08-31T00:00:00"),
+  });
+  const result = model.calculateCsValue(summary, {
+    hourlyRate: 50,
+    contentMinutesSaved: 9,
+    bulkSecondsSaved: 30,
+    bulkRealizationPercent: 25,
+    assetMinutesSaved: 5,
+    syndicationMinutesSaved: 7.5,
+    annualPxmInvestment: 31_000,
+  });
+
+  assert.equal(summary.byCategory.bulk, 80);
+  assert.equal(summary.byCategory.automation, 140_000);
+  assert.equal(summary.byCategory.asset, 10);
+
+  const humanRecordValue = 80 * 0.25 * (30 / 3600) * 50;
+  const assetValue = 10 * (5 / 60) * 50;
+  assert.equal(Math.round(result.periodValue), Math.round(humanRecordValue + assetValue));
+  assert.ok(result.periodValue < 100);
 });
 
 test("flags value that exceeds what the observed team could perform", async () => {
@@ -153,6 +199,7 @@ test("flags value that exceeds what the observed team could perform", async () =
     byCategory: {
       content: 0,
       bulk: 254_064,
+      automation: 0,
       asset: 0,
       syndication: 0,
       import: 0,
@@ -240,6 +287,7 @@ test("prorates value and annual investment to the same period", async () => {
     byCategory: {
       content: 0,
       bulk: 0,
+      automation: 0,
       asset: 65,
       syndication: 0,
       import: 0,

@@ -37,23 +37,20 @@ or 59 days.
 
 Observed actions are grouped into:
 
-- Record and attribute maintenance: attribute and API updates
+- Human record and attribute edits: named-user attribute updates
+- Automated throughput: API updates and System Generated activity (not dollarized)
 - Content operations: collection folders and media edits
 - Asset access and sharing: downloads and shares
-- Syndication: syndication and publish-to-channel events
+- Syndication: human-driven publish-to-channel events
 - Context only: imports, adoption, and unrecognized actions
 
-Context-only activity is deliberately not dollarized to reduce double-counting.
+API and System Generated volume is counted as throughput and excluded from
+hours and dollars. A QBR audience will not trust labor savings claimed against
+work no person would have performed by hand.
 
-### Why update volume is priced differently
-
-`Count` does not mean the same thing on every tab. On Shares and Downloads it
-counts human tasks. On Updates it counts records and attributes touched, and a
-single bulk edit or API push can run that into the thousands. Pricing those at
-a per-task rate produces impossible totals, so they are valued per record and
-multiplied by a realization share — the portion of that volume a team would
-plausibly have maintained by hand. Defaults are 30 seconds per record at 25%
-realization.
+Human record volume that remains is valued per record and multiplied by a
+realization share — the portion a team would plausibly have maintained by
+hand. Defaults are 30 seconds per record at 25% realization.
 
 The report also shows the implied full-time-equivalent workload next to the
 active user count. If the estimate claims more avoided work than the observed

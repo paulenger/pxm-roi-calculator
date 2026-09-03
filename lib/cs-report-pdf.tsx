@@ -95,8 +95,8 @@ export function CsReportPDF({
 }) {
   const levers: [string, string, number][] = [
     [
-      "Record & attribute maintenance",
-      `${activity.byCategory.bulk.toLocaleString()} records touched · ${assumptions.bulkRealizationPercent}% realized`,
+      "Human record & attribute edits",
+      `${activity.byCategory.bulk.toLocaleString()} human-driven records · ${assumptions.bulkRealizationPercent}% realized`,
       result.bulkValue,
     ],
     [
@@ -134,10 +134,11 @@ export function CsReportPDF({
         </View>
 
         <View style={styles.hero}>
-          <Text style={styles.eyebrow}>Value supported by observed activity</Text>
+          <Text style={styles.eyebrow}>Defensible labor value</Text>
           <Text style={styles.heroValue}>{money(result.periodValue)}</Text>
           <Text style={styles.heroSub}>
-            {hours(result.totalHours)} estimated hours returned during this reporting period
+            {hours(result.totalHours)} estimated hours of avoided human work · API and
+            System Generated volume is excluded from this total
           </Text>
         </View>
 
@@ -163,7 +164,7 @@ export function CsReportPDF({
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Observed activity and estimated value</Text>
+          <Text style={styles.cardTitle}>Labor we can defend in a QBR</Text>
           {values.map(([label, detail, value]) => (
             <View style={styles.row} key={label}>
               <Text style={styles.rowLabel}>
@@ -174,13 +175,31 @@ export function CsReportPDF({
           ))}
           <View style={styles.row}>
             <Text style={styles.rowLabel}>
-              Implied workload across {activity.uniqueUsers} active users
+              Implied human workload across {activity.uniqueUsers} active users
             </Text>
             <Text style={styles.rowValue}>
               {result.fteEquivalent.toFixed(1)} FTE
             </Text>
           </View>
         </View>
+
+        {activity.byCategory.automation > 0 ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Automated throughput — not dollarized</Text>
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>
+                API and System Generated records processed
+              </Text>
+              <Text style={styles.rowValue}>
+                {activity.byCategory.automation.toLocaleString()}
+              </Text>
+            </View>
+            <Text style={styles.note}>
+              This volume is evidence of scale. It is not converted to hours or dollars
+              because a person would not have performed that work by hand.
+            </Text>
+          </View>
+        ) : null}
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Value assumptions</Text>
@@ -215,12 +234,12 @@ export function CsReportPDF({
         </View>
 
         <Text style={styles.note}>
-          Observed counts come from the uploaded PXM activity export. Update activity is counted
-          in records and attributes touched rather than in tasks, so it is valued per record and
-          discounted to the share a team would realistically have maintained by hand. Dollar
-          values are directional estimates based on the assumptions shown above. Period cost is
-          the annual PXM investment prorated to {activity.spanDays} reporting days. Annualized
-          run-rate is a projection and not a guarantee of future activity or savings.
+          Headline dollars include only human-driven activity. API updates and System
+          Generated records are counted as throughput and excluded from value. Remaining
+          human record volume is valued per record and discounted to the share a team
+          would realistically have maintained by hand. Period cost is the annual PXM
+          investment prorated to {activity.spanDays} reporting days. Annualized run-rate
+          is a projection, not a guarantee.
         </Text>
       </Page>
     </Document>
