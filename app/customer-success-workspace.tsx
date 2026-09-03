@@ -588,37 +588,34 @@ export default function CustomerSuccessWorkspace() {
               )}
 
               <div className="result-hero">
-                <p>
-                  {result.recordsDollarized
-                    ? "Observed catalog workload run through PXM"
-                    : "Observed human-task workload (records excluded from dollars)"}
-                </p>
-                <strong>{result.fteEquivalent.toFixed(1)} FTE</strong>
+                <p>Observed catalog activity run through PXM</p>
+                <strong>{activity.totalActions.toLocaleString()}</strong>
                 <span>
-                  {activity.totalActions.toLocaleString()} observed actions across{" "}
-                  {activity.uniqueUsers} active users · {activity.spanDays} days
+                  actions across {activity.uniqueUsers} active users ·{" "}
+                  {activity.spanDays} days
                   {!result.recordsDollarized && result.recordMaintenanceCount > 0
-                    ? ` · ${result.recordMaintenanceCount.toLocaleString()} record-maintenance events shown as throughput, not labor`
+                    ? ` · ${result.recordMaintenanceCount.toLocaleString()} record-maintenance events shown as throughput`
                     : ""}
                 </span>
               </div>
 
               {periodTrend && (
                 <div className="cs-trend">
-                  <strong>Workload trend across periods</strong>
+                  <strong>Observed activity trend across periods</strong>
                   <span>
-                    Implied workload: {periodTrend.previous.fteEquivalent.toFixed(1)} FTE →{" "}
-                    {periodTrend.current.fteEquivalent.toFixed(1)} FTE. Observed actions:{" "}
+                    Observed actions:{" "}
                     {periodTrend.previous.totalActions.toLocaleString()} →{" "}
                     {periodTrend.current.totalActions.toLocaleString()}. Active users:{" "}
-                    {periodTrend.previous.uniqueUsers} → {periodTrend.current.uniqueUsers}.
-                    Lead renewal conversations with this trend — it does not depend on
-                    disputed dollar assumptions.
+                    {periodTrend.previous.uniqueUsers} → {periodTrend.current.uniqueUsers}.{" "}
+                    Modeled dollarized workload:{" "}
+                    {periodTrend.previous.fteEquivalent.toFixed(1)} FTE →{" "}
+                    {periodTrend.current.fteEquivalent.toFixed(1)} FTE. Lead with the
+                    observed trend; it does not depend on disputed time assumptions.
                   </span>
                 </div>
               )}
 
-              {result.compositionUnverified && (
+              {result.compositionUnverified && !result.recordsDollarized && (
                 <div className="cs-warning">
                   <strong>Record volume is not dollarized on this report</strong>
                   <span>
@@ -659,8 +656,9 @@ export default function CustomerSuccessWorkspace() {
                       >
                         <td>{scenario.label}</td>
                         <td>
-                          {Math.round(scenario.realizationPercent)}% ·{" "}
-                          {number(scenario.secondsPerRecord)}s/record
+                          {result.recordsDollarized
+                            ? `${Math.round(scenario.realizationPercent)}% · ${number(scenario.secondsPerRecord)}s/record`
+                            : "Records excluded · fixed human-task inputs"}
                         </td>
                         <td>{money(scenario.periodValue)}</td>
                         <td>
@@ -702,7 +700,7 @@ export default function CustomerSuccessWorkspace() {
                 <p className="benefit-desc cs-range-note">
                   {result.recordsDollarized
                     ? "Lead with the conservative floor. It is the number that survives scrutiny from a finance stakeholder."
-                    : "Record volume is excluded from all scenarios. These dollars reflect only downloads, shares, and syndications — the categories a finance stakeholder can defend without a sampled audit."}
+                    : "Record volume is excluded from all scenarios. Asset and syndication inputs are fixed, so all three cases correctly converge to the same value."}
                 </p>
               </div>
               <button
@@ -763,7 +761,7 @@ export default function CustomerSuccessWorkspace() {
 
               <div className={`cs-capacity ${result.overCapacity ? "is-warning" : ""}`}>
                 <div>
-                  <span>Implied workload</span>
+                  <span>Modeled dollarized human-task workload</span>
                   <strong>{result.fteEquivalent.toFixed(1)} FTE</strong>
                   <small>
                     {number(result.totalHours)} hours ÷ {activity.spanDays} days of
@@ -773,7 +771,7 @@ export default function CustomerSuccessWorkspace() {
                 <p>
                   {result.overCapacity
                     ? `This claims more avoided work than ${activity.uniqueUsers} active people could perform. Lower the per-record seconds or the realized share before sharing it.`
-                    : `Defensible against ${activity.uniqueUsers} active users. A QBR audience will check this number first.`}
+                    : `This includes only activity converted to dollars using the stated time assumptions. It is modeled, not directly observed.`}
                 </p>
               </div>
 

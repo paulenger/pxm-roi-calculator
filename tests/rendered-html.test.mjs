@@ -269,6 +269,49 @@ test("dollarizes only human-task categories when record composition is unverifie
   assert.equal(Math.round(result.syndicationValue), 356);
   assert.ok(result.periodValue < 5_000);
   assert.ok(result.scenarios[0].periodValue < result.periodCost);
+  assert.equal(result.scenarios[0].periodValue, result.scenarios[1].periodValue);
+  assert.equal(result.scenarios[1].periodValue, result.scenarios[2].periodValue);
+  assert.equal(
+    result.scenarios[0].paybackMonths,
+    result.scenarios[2].paybackMonths,
+  );
+});
+
+test("a documented measured sample can unlock record valuation", async () => {
+  const model = await loadCsModel();
+  const rows = model.parseActivitySheets([
+    {
+      name: "Updates",
+      rows: [
+        ["Date", "User", "Hostname", "Count", "Action"],
+        ["7/10/2026", "Peter Jakl", "helmethouse", 253_883, "Update"],
+      ],
+    },
+  ]);
+  const summary = model.summarizeActivity(rows, {
+    start: new Date("2026-07-04T00:00:00"),
+    end: new Date("2026-08-31T00:00:00"),
+  });
+  const result = model.calculateCsValue(summary, {
+    hourlyRate: 50,
+    contentMinutesSaved: 9,
+    bulkSecondsSaved: 15,
+    bulkRealizationPercent: 10,
+    realizationMeasured: true,
+    realizationSampleNote:
+      "n=200 Updates rows sampled on Aug 31; classified manual, bulk, and automated.",
+    hourlyRateConfirmed: false,
+    assetMinutesSaved: 2,
+    syndicationMinutesSaved: 7.5,
+    annualPxmInvestment: 31_000,
+  });
+
+  assert.equal(result.compositionUnverified, true);
+  assert.equal(result.recordsDollarized, true);
+  assert.ok(result.bulkValue > 0);
+  assert.ok(
+    result.scenarios[0].periodValue < result.scenarios[1].periodValue,
+  );
 });
 
 test("excludes automated downloads and shares from dollar totals", async () => {

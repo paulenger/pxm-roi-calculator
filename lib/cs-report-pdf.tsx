@@ -205,11 +205,14 @@ export function CsReportPDF({
         ) : null}
 
         <View style={styles.hero}>
-          <Text style={styles.eyebrow}>Catalog workload run through PXM</Text>
-          <Text style={styles.heroValue}>{result.fteEquivalent.toFixed(1)} FTE</Text>
+          <Text style={styles.eyebrow}>Observed catalog activity run through PXM</Text>
+          <Text style={styles.heroValue}>
+            {activity.totalActions.toLocaleString()}
+          </Text>
           <Text style={styles.heroSub}>
-            {activity.totalActions.toLocaleString()} observed actions across{" "}
-            {activity.uniqueUsers} active users over {activity.spanDays} days
+            actions across {activity.uniqueUsers} active users over{" "}
+            {activity.spanDays} days · {result.recordMaintenanceCount.toLocaleString()}{" "}
+            record-maintenance events shown as throughput
           </Text>
         </View>
 
@@ -231,12 +234,15 @@ export function CsReportPDF({
 
         {periodTrend ? (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Workload trend across periods</Text>
+            <Text style={styles.cardTitle}>Observed activity trend across periods</Text>
             <Text style={styles.note}>
-              Implied workload: {periodTrend.previous.fteEquivalent.toFixed(1)} FTE →{" "}
-              {periodTrend.current.fteEquivalent.toFixed(1)} FTE. Observed actions:{" "}
+              Observed actions:{" "}
               {periodTrend.previous.totalActions.toLocaleString()} →{" "}
-              {periodTrend.current.totalActions.toLocaleString()}.
+              {periodTrend.current.totalActions.toLocaleString()}. Active users:{" "}
+              {periodTrend.previous.uniqueUsers} → {periodTrend.current.uniqueUsers}.
+              Modeled dollarized workload:{" "}
+              {periodTrend.previous.fteEquivalent.toFixed(1)} FTE →{" "}
+              {periodTrend.current.fteEquivalent.toFixed(1)} FTE.
             </Text>
           </View>
         ) : null}
@@ -274,8 +280,13 @@ export function CsReportPDF({
           {result.scenarios.map((scenario) => (
             <View style={styles.row} key={scenario.key}>
               <Text style={styles.rowLabel}>
-                {scenario.label} · {Math.round(scenario.realizationPercent)}% ·{" "}
-                {hours(scenario.secondsPerRecord)}s/record ·{" "}
+                {scenario.label} ·{" "}
+                {result.recordsDollarized
+                  ? `${Math.round(scenario.realizationPercent)}% · ${hours(
+                      scenario.secondsPerRecord,
+                    )}s/record`
+                  : "records excluded · fixed human-task inputs"}{" "}
+                ·{" "}
                 {money(scenario.annualizedValue)} annualized ·{" "}
                 {scenario.paybackMonths === null
                   ? "—"
@@ -304,7 +315,7 @@ export function CsReportPDF({
           ))}
         </View>
 
-        {result.compositionUnverified ? (
+        {result.compositionUnverified && !result.recordsDollarized ? (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Record volume excluded from dollars</Text>
             <Text style={styles.note}>

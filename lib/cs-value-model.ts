@@ -99,11 +99,11 @@ export type CsScenario = {
  */
 const SCENARIO_SHAPE: Record<
   CsScenarioKey,
-  { label: string; realization: number; minutes: number }
+  { label: string; realization: number; recordSeconds: number }
 > = {
-  conservative: { label: "Conservative", realization: 0.4, minutes: 0.5 },
-  expected: { label: "Expected", realization: 1, minutes: 1 },
-  upper: { label: "Upper bound", realization: 1.6, minutes: 1.5 },
+  conservative: { label: "Conservative", realization: 0.4, recordSeconds: 0.5 },
+  expected: { label: "Expected", realization: 1, recordSeconds: 1 },
+  upper: { label: "Upper bound", realization: 1.6, recordSeconds: 1.5 },
 };
 
 export type CsValueResult = {
@@ -539,8 +539,12 @@ export function calculateCsValue(
     recordVolume > 0 ? (activity.byCategory.automation / recordVolume) * 100 : 0;
   const compositionUnverified = recordVolume >= 10_000 && automationSharePercent < 1;
   // When the export labels almost no automation, record volume is throughput
-  // evidence only — not labor dollars — until a sampled audit proves composition.
-  const recordsDollarized = !compositionUnverified;
+  // evidence only — not labor dollars — until a documented sample audit
+  // supplies a measured manual/bulk/automated share.
+  const measuredComposition =
+    assumptions.realizationMeasured &&
+    assumptions.realizationSampleNote.trim().length > 0;
+  const recordsDollarized = !compositionUnverified || measuredComposition;
 
   const contentHours =
     (activity.byCategory.content * assumptions.contentMinutesSaved) / 60;
@@ -581,11 +585,13 @@ export function calculateCsValue(
   const scenarios = (Object.keys(SCENARIO_SHAPE) as CsScenarioKey[]).map((key) => {
     const shape = SCENARIO_SHAPE[key];
     const scenarioRealization = Math.min(realization * shape.realization, 1);
-    const scenarioSeconds = assumptions.bulkSecondsSaved * shape.minutes;
-    const scenarioAssetMinutes = assumptions.assetMinutesSaved * shape.minutes;
-    const scenarioSyndicationMinutes =
-      assumptions.syndicationMinutesSaved * shape.minutes;
-    const scenarioContentMinutes = assumptions.contentMinutesSaved * shape.minutes;
+    const scenarioSeconds = assumptions.bulkSecondsSaved * shape.recordSeconds;
+    // These are fixed inputs, not record-volume assumptions. They remain
+    // constant across scenarios unless the product exposes explicit scenario
+    // controls for them.
+    const scenarioAssetMinutes = assumptions.assetMinutesSaved;
+    const scenarioSyndicationMinutes = assumptions.syndicationMinutesSaved;
+    const scenarioContentMinutes = assumptions.contentMinutesSaved;
 
     const bulkHoursForScenario = recordsDollarized
       ? (activity.byCategory.bulk * scenarioRealization * scenarioSeconds) / 3600

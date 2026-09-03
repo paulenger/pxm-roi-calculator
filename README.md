@@ -50,15 +50,17 @@ from hours and dollars.
 That detection is only as good as the export. Helmet House's workbook labeled
 0.07% of 254,064 records as automated, which almost certainly understates real
 automation rather than proving the rest was manual. When record volume is large
-and labeled automation is under 1%, the report says composition is unverified
-instead of claiming automated volume was removed.
+and labeled automation is under 1%, record-maintenance events remain measured
+throughput evidence but are excluded from hours and dollars. A documented
+sample audit unlocks record valuation.
 
 ### Presenting the number
 
-The report leads with observed, measured facts: action counts, active users, and
-the implied full-time-equivalent workload. Dollars follow as a three-scenario
-band rather than a single point, because the two record-volume assumptions are
-asserted rather than measured:
+The report leads with observed, measured facts: action counts, record
+maintenance throughput, and active users. The FTE metric is explicitly labeled
+as modeled dollarized human-task workload; there is no assumption-free way to
+turn heterogeneous activity counts into hours. Dollars follow as a
+three-scenario band rather than a single point.
 
 | Scenario | Realized share | Seconds per record |
 | --- | --- | --- |
@@ -66,9 +68,11 @@ asserted rather than measured:
 | Expected | as entered | as entered |
 | Upper bound | 1.6x expected | 1.5x expected |
 
-Multipliers apply to whatever the CSM entered, so the band moves with the
-inputs. Lead a renewal conversation with the conservative floor; it is the
-figure that survives scrutiny from a finance stakeholder.
+Scenario multipliers apply only to the disputed record realization and
+seconds-per-record assumptions. Asset, content, and syndication times remain
+fixed across scenarios. When record volume is excluded, all three scenarios
+therefore converge to the same dollar value instead of incorrectly multiplying
+unrelated categories by 0.5x and 1.5x.
 
 The realized share can be marked **measured** once a CSM samples the raw Updates
 rows and classifies them as manual UI edits, bulk imports, or channel
@@ -81,8 +85,9 @@ payback are computed for all three scenarios; the conservative floor is the
 primary tile. API and system actors are excluded from dollars on every action
 type where the export labels them, with per-type counts shown even when zero.
 
-When two or more periods exist for the same brand, workload trend (FTE and
-actions) is shown as the primary renewal talking point.
+When two or more periods exist for the same brand, observed action and active
+user trends are shown as the primary renewal talking point. Modeled FTE appears
+separately.
 
 The report also shows the implied full-time-equivalent workload next to the
 active user count. If the estimate claims more avoided work than the observed
