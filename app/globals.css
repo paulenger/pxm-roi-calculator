@@ -64,6 +64,31 @@ button { color: inherit; }
 }
 .top-actions a:hover { border-color: var(--cyan); color: white; }
 
+.workspace-tabs {
+  max-width: 1450px;
+  margin: 28px auto 0;
+  padding: 0 5vw;
+  display: flex;
+  gap: 8px;
+}
+.workspace-tabs button {
+  min-width: 230px;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: rgba(18, 24, 39, .8);
+  border-radius: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+}
+.workspace-tabs button:hover { border-color: rgba(0, 167, 255, .5); }
+.workspace-tabs button.active {
+  border-color: var(--cyan);
+  background: linear-gradient(135deg, rgba(0, 167, 255, .17), rgba(116, 38, 255, .18));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
+}
+.workspace-tabs span { display: block; font-size: 14px; font-weight: 800; }
+.workspace-tabs small { display: block; color: var(--muted); font-size: 10px; margin-top: 3px; }
+
 .hero {
   max-width: 1450px;
   margin: 0 auto;
@@ -84,6 +109,94 @@ h1 { font-size: clamp(38px, 4vw, 64px); letter-spacing: -.045em; line-height: .9
 .scenario-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .scenario-tabs button { border: 1px solid var(--line); background: #0c111d; padding: 10px 8px; border-radius: 9px; cursor: pointer; font-size: 13px; }
 .scenario-tabs button.active { background: linear-gradient(135deg, #078fe9, #6728f0); border-color: transparent; font-weight: 700; }
+
+.cs-hero { padding-top: 44px; }
+.cs-method-note {
+  padding: 18px;
+  background: rgba(18, 24, 39, .8);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+.cs-method-note strong { display: block; font-size: 13px; margin-bottom: 6px; }
+.cs-method-note span { display: block; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.cs-dropzone {
+  width: 100%;
+  min-height: 126px;
+  border: 1px dashed #3a4864;
+  border-radius: 14px;
+  background: #0b101b;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.cs-dropzone:hover { border-color: var(--cyan); background: rgba(0, 167, 255, .04); }
+.cs-dropzone.has-data { border-style: solid; border-color: #22c55e; }
+.cs-dropzone strong { font-size: 14px; }
+.cs-dropzone span { color: var(--muted); font-size: 11px; }
+.cs-error {
+  color: #fecaca;
+  background: rgba(239, 68, 68, .1);
+  border: 1px solid rgba(239, 68, 68, .25);
+  border-radius: 9px;
+  padding: 11px 13px;
+  margin-top: 12px;
+  font-size: 12px;
+}
+.cs-observed {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.cs-observed > div {
+  border: 1px solid var(--line);
+  background: rgba(8, 11, 18, .45);
+  border-radius: 10px;
+  padding: 10px;
+}
+.cs-observed span { display: block; color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .05em; }
+.cs-observed strong { display: block; margin-top: 5px; font-size: 12px; overflow-wrap: anywhere; }
+.cs-brand-input {
+  width: 100%;
+  color: white;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  outline: 0;
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 4px;
+  padding: 0 0 2px;
+}
+.cs-brand-input:focus { border-bottom-color: var(--cyan); }
+.cs-empty-result {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  min-height: 250px;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: linear-gradient(145deg, rgba(23, 31, 50, .96), rgba(15, 21, 34, .96));
+}
+.cs-empty-result span { color: var(--cyan); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
+.cs-empty-result strong { font-size: 25px; margin: 8px 0; }
+.cs-empty-result p { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 0; }
+.cs-context-note {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.cs-context-note strong { color: #dbe2ee; font-size: 11px; }
 
 .workspace {
   max-width: 1450px;
@@ -298,12 +411,16 @@ h1 { font-size: clamp(38px, 4vw, 64px); letter-spacing: -.045em; line-height: .9
   .hero { grid-template-columns: 1fr; gap: 30px; }
   .workspace { grid-template-columns: 1fr; }
   .results { position: static; }
+  .cs-observed { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 680px) {
   .topbar { padding: 0 20px; }
-  .hero, .workspace, .evidence { padding-left: 20px; padding-right: 20px; }
+  .hero, .workspace, .evidence, .workspace-tabs { padding-left: 20px; padding-right: 20px; }
+  .workspace-tabs { overflow-x: auto; }
+  .workspace-tabs button { min-width: 190px; }
   .field-grid { grid-template-columns: 1fr 1fr; }
+  .cs-observed { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .proof-grid { grid-template-columns: 1fr 1fr; }
   .evidence-items { grid-template-columns: 1fr; }
 }

@@ -1,98 +1,67 @@
-# vinext-starter
+# Pattern PXM Value Calculator
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+One calculator with two workspaces:
 
-## Prerequisites
+- **Sales** builds a prospective annual business case from editable assumptions.
+- **Customer Success** imports observed PXM activity and estimates value over the
+  same reporting period for QBR and renewal conversations.
 
-- Node.js `>=22.13.0`
+## Run locally
 
-## Quick Start
+Requires Node.js 22.13 or newer.
 
 ```bash
 npm install
 npm run dev
+```
+
+Open `http://localhost:3000`.
+
+## Customer Success activity import
+
+Drop the full **activity-metrics `.xlsx`**. Every tab is read (Updates, Shares,
+File Downloads, Product Downloads, Syndications, Imports, and the rest).
+`Active Users` is skipped because it is a rollup of the other tabs and would
+double-count.
+
+CSV tabs still work if you export sheets one at a time. Columns can vary by
+tab; the importer looks for Date, User / Sender, Hostname, Count, and Action
+when they exist, and uses the tab name as the action when they do not.
+
+`Count` is summed rather than treating every row as one action.
+
+When an export filename contains a range such as
+`2026-07-04-to-2026-09-01`, the upper date is treated as exclusive, matching
+the PXM export convention. That example is reported as July 4–August 31,
+or 59 days.
+
+Observed actions are grouped into:
+
+- Content operations: updates, attributes, collection folders, and media edits
+- Asset access and sharing: downloads and shares
+- Syndication: syndication and publish-to-channel events
+- Context only: imports, adoption, and unrecognized actions
+
+Context-only activity is deliberately not dollarized to reduce double-counting.
+The annual PXM investment is prorated to the exact report window before period
+ROI is calculated. Annualized value is displayed separately as a run-rate
+projection.
+
+## Commands
+
+```bash
+npm run lint
+npm test
 npm run build
 ```
 
-This starter does not use `wrangler.jsonc`.
+`npm test` verifies the production build, CSV count aggregation, exclusive
+filename date ranges, period cost proration, and that Sales remains the default
+workspace with its annual formulas intact.
 
-## Included Shape
+## Important interpretation
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
-```
-
-## Optional Dispatch-Owned ChatGPT Sign-In
-
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
-
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
-
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
-
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
-
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Useful Commands
-
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+The CS report combines observed action counts with editable assumptions for
+minutes saved and loaded hourly cost. It is a directional value model, not a
+guarantee of financial outcomes. The generated PDF includes the assumptions
+used so customers can review the calculation.

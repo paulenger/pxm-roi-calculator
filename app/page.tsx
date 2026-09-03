@@ -1,8 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { pdf } from "@react-pdf/renderer";
 import { ReportPDF } from "@/lib/report-pdf";
+
+const CustomerSuccessWorkspace = dynamic(
+  () => import("./customer-success-workspace"),
+  { ssr: false },
+);
 
 type Inputs = {
   currentCostPerImage: number;
@@ -145,6 +151,7 @@ function Field({
 
 export default function Home() {
   const [inputs, setInputs] = useState(initial);
+  const [workspace, setWorkspace] = useState<"sales" | "customer-success">("sales");
   const [scenario, setScenario] = useState<Scenario>("expected");
   const [showAssumptions, setShowAssumptions] = useState(false);
   const [useCreative, setUseCreative] = useState(false);
@@ -297,7 +304,30 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="hero">
+      <nav className="workspace-tabs" aria-label="Calculator workspace">
+        <button
+          type="button"
+          className={workspace === "sales" ? "active" : ""}
+          onClick={() => setWorkspace("sales")}
+        >
+          <span>Sales</span>
+          <small>Build a prospective business case</small>
+        </button>
+        <button
+          type="button"
+          className={workspace === "customer-success" ? "active" : ""}
+          onClick={() => setWorkspace("customer-success")}
+        >
+          <span>Customer Success</span>
+          <small>Prove value from observed activity</small>
+        </button>
+      </nav>
+
+      {workspace === "customer-success" ? (
+        <CustomerSuccessWorkspace />
+      ) : (
+        <>
+          <section className="hero">
         <div>
           <p className="eyebrow">Build the business case</p>
           <h1>What could PXM be worth to your business?</h1>
@@ -864,7 +894,7 @@ export default function Home() {
         </aside>
       </section>
 
-      <section className="evidence">
+          <section className="evidence">
         <div>
           <p className="eyebrow">Customer outcomes</p>
           <h2>What brands achieve with Pattern PXM</h2>
@@ -894,7 +924,9 @@ export default function Home() {
           and supporting evidence should be validated before use in a final
           business case.
         </p>
-      </section>
+          </section>
+        </>
+      )}
     </main>
   );
 }
