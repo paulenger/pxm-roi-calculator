@@ -44,13 +44,39 @@ Observed actions are grouped into:
 - Syndication: human-driven publish-to-channel events
 - Context only: imports, adoption, and unrecognized actions
 
-API and System Generated volume is counted as throughput and excluded from
-hours and dollars. A QBR audience will not trust labor savings claimed against
-work no person would have performed by hand.
+Records that name an API or system actor are counted as throughput and excluded
+from hours and dollars.
 
-Human record volume that remains is valued per record and multiplied by a
-realization share — the portion a team would plausibly have maintained by
-hand. Defaults are 30 seconds per record at 25% realization.
+That detection is only as good as the export. Helmet House's workbook labeled
+0.07% of 254,064 records as automated, which almost certainly understates real
+automation rather than proving the rest was manual. When record volume is large
+and labeled automation is under 1%, the report says composition is unverified
+instead of claiming automated volume was removed.
+
+### Presenting the number
+
+The report leads with observed, measured facts: action counts, active users, and
+the implied full-time-equivalent workload. Dollars follow as a three-scenario
+band rather than a single point, because the two record-volume assumptions are
+asserted rather than measured:
+
+| Scenario | Realized share | Seconds per record |
+| --- | --- | --- |
+| Conservative | 0.4x expected | 0.5x expected |
+| Expected | as entered | as entered |
+| Upper bound | 1.6x expected | 1.5x expected |
+
+Multipliers apply to whatever the CSM entered, so the band moves with the
+inputs. Lead a renewal conversation with the conservative floor; it is the
+figure that survives scrutiny from a finance stakeholder.
+
+The realized share can be marked **measured** once a CSM samples the raw Updates
+rows and classifies them as manual UI edits, bulk imports, or channel
+write-backs. The report prints which basis was used, because an assumed ratio
+and a measured one do not deserve equal confidence.
+
+Assumptions that contribute nothing to a given report are omitted from the
+printed assumptions block, so the report never lists a rate it did not use.
 
 The report also shows the implied full-time-equivalent workload next to the
 active user count. If the estimate claims more avoided work than the observed

@@ -210,6 +210,43 @@ h1 { font-size: clamp(38px, 4vw, 64px); letter-spacing: -.045em; line-height: .9
 }
 .cs-throughput strong { color: #e9e0ff; font-size: 11px; }
 
+.cs-warning {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px solid rgba(251, 191, 36, .5);
+  background: rgba(251, 191, 36, .08);
+  border-radius: 12px;
+  padding: 14px;
+  color: #e8dcc0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.cs-warning strong { color: #fcd34d; font-size: 11px; }
+
+.cs-scenarios tr.is-expected td { color: #f7f8fb; background: rgba(116, 38, 255, .1); }
+.cs-scenarios td:nth-child(2) { color: #6f7a8d; font-size: 10px; }
+.cs-range-note { padding-left: 0; margin-top: 10px; }
+
+.cs-measured-field { gap: 6px; }
+.cs-toggle { display: flex; gap: 6px; }
+.cs-toggle button {
+  flex: 1;
+  padding: 9px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: rgba(8, 11, 18, .45);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cs-toggle button.is-on {
+  border-color: var(--cyan);
+  background: rgba(0, 167, 255, .12);
+  color: var(--cyan);
+}
+
 .cs-capacity {
   display: grid;
   grid-template-columns: minmax(0, 150px) minmax(0, 1fr);

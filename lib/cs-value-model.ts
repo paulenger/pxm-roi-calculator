@@ -50,9 +50,46 @@ export type CsValueAssumptions = {
   contentMinutesSaved: number;
   bulkSecondsSaved: number;
   bulkRealizationPercent: number;
+  /**
+   * False means the realized share is Pattern's planning assumption. True means
+   * a CSM sampled the raw export and classified manual edits vs bulk imports vs
+   * automated write-backs. The report says which, because an assumed ratio and
+   * a measured one do not deserve the same confidence in a renewal conversation.
+   */
+  realizationMeasured: boolean;
   assetMinutesSaved: number;
   syndicationMinutesSaved: number;
   annualPxmInvestment: number;
+};
+
+export type CsScenarioKey = "conservative" | "expected" | "upper";
+
+export type CsScenario = {
+  key: CsScenarioKey;
+  label: string;
+  realizationPercent: number;
+  secondsPerRecord: number;
+  assetMinutes: number;
+  syndicationMinutes: number;
+  totalHours: number;
+  periodValue: number;
+  periodRoi: number | null;
+  annualizedValue: number;
+  fteEquivalent: number;
+};
+
+/**
+ * The record-volume assumptions are the disputed ones, so the report shows a
+ * band instead of a single point. Multipliers are applied to whatever the CSM
+ * entered as the expected case, so the band moves with their inputs.
+ */
+const SCENARIO_SHAPE: Record<
+  CsScenarioKey,
+  { label: string; realization: number; minutes: number }
+> = {
+  conservative: { label: "Conservative", realization: 0.4, minutes: 0.5 },
+  expected: { label: "Expected", realization: 1, minutes: 1 },
+  upper: { label: "Upper bound", realization: 1.6, minutes: 1.5 },
 };
 
 export type CsValueResult = {
@@ -77,6 +114,15 @@ export type CsValueResult = {
   fteEquivalent: number;
   fteCeiling: number;
   overCapacity: boolean;
+  scenarios: CsScenario[];
+  /**
+   * True when the export carries a lot of record volume but almost none of it
+   * is attributable to an API or system actor. That means the export does not
+   * label automation, not that automation is absent, so the report must not
+   * claim automated volume was excluded.
+   */
+  compositionUnverified: boolean;
+  automationSharePercent: number;
 };
 
 const EMPTY_CATEGORIES: Record<CsActivityCategory, number> = {
@@ -452,6 +498,41 @@ export function calculateCsValue(
   const fteEquivalent = periodCapacity > 0 ? totalHours / periodCapacity : 0;
   const fteCeiling = activity.uniqueUsers;
 
+  const scenarios = (Object.keys(SCENARIO_SHAPE) as CsScenarioKey[]).map((key) => {
+    const shape = SCENARIO_SHAPE[key];
+    const scenarioRealization = Math.min(realization * shape.realization, 1);
+    const scenarioSeconds = assumptions.bulkSecondsSaved * shape.minutes;
+    const scenarioAssetMinutes = assumptions.assetMinutesSaved * shape.minutes;
+    const scenarioSyndicationMinutes =
+      assumptions.syndicationMinutesSaved * shape.minutes;
+    const scenarioContentMinutes = assumptions.contentMinutesSaved * shape.minutes;
+
+    const scenarioHours =
+      (activity.byCategory.bulk * scenarioRealization * scenarioSeconds) / 3600 +
+      (activity.byCategory.content * scenarioContentMinutes) / 60 +
+      (activity.byCategory.asset * scenarioAssetMinutes) / 60 +
+      (activity.byCategory.syndication * scenarioSyndicationMinutes) / 60;
+    const scenarioValue = scenarioHours * assumptions.hourlyRate;
+
+    return {
+      key,
+      label: shape.label,
+      realizationPercent: scenarioRealization * 100,
+      secondsPerRecord: scenarioSeconds,
+      assetMinutes: scenarioAssetMinutes,
+      syndicationMinutes: scenarioSyndicationMinutes,
+      totalHours: scenarioHours,
+      periodValue: scenarioValue,
+      periodRoi: periodCost > 0 ? ((scenarioValue - periodCost) / periodCost) * 100 : null,
+      annualizedValue: scenarioValue * (365 / activity.spanDays),
+      fteEquivalent: periodCapacity > 0 ? scenarioHours / periodCapacity : 0,
+    };
+  });
+
+  const recordVolume = activity.byCategory.bulk + activity.byCategory.automation;
+  const automationSharePercent =
+    recordVolume > 0 ? (activity.byCategory.automation / recordVolume) * 100 : 0;
+
   return {
     contentHours,
     bulkHours,
@@ -474,5 +555,8 @@ export function calculateCsValue(
     fteEquivalent,
     fteCeiling,
     overCapacity: fteCeiling > 0 && fteEquivalent > fteCeiling,
+    scenarios,
+    compositionUnverified: recordVolume >= 10_000 && automationSharePercent < 1,
+    automationSharePercent,
   };
 }

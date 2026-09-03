@@ -17,7 +17,8 @@ const DEFAULT_ASSUMPTIONS: CsValueAssumptions = {
   contentMinutesSaved: 9,
   bulkSecondsSaved: 30,
   bulkRealizationPercent: 25,
-  assetMinutesSaved: 5,
+  realizationMeasured: false,
+  assetMinutesSaved: 2,
   syndicationMinutesSaved: 7.5,
   annualPxmInvestment: 31_000,
 };
@@ -202,7 +203,7 @@ export default function CustomerSuccessWorkspace() {
           hours: result.bulkHours,
           value: result.bulkValue,
           color: "#7426ff",
-          detail: `${activity.byCategory.bulk.toLocaleString()} human-driven records × ${assumptions.bulkRealizationPercent}% realized × ${assumptions.bulkSecondsSaved}s = ${number(result.bulkHours)} hours. API volume is excluded.`,
+          detail: `${activity.byCategory.bulk.toLocaleString()} records not attributed to an API or system actor × ${assumptions.bulkRealizationPercent}% realized × ${assumptions.bulkSecondsSaved}s = ${number(result.bulkHours)} hours`,
         },
         {
           name: "Content operations",
@@ -236,18 +237,18 @@ export default function CustomerSuccessWorkspace() {
       <section className="hero cs-hero">
         <div>
           <p className="eyebrow">Prove realized customer value</p>
-          <h1>What labor did people avoid because of PXM?</h1>
+          <h1>How much catalog work is this brand running through PXM?</h1>
           <p className="hero-copy">
-            Headline dollars come only from human-driven activity. API and
-            System Generated volume is shown as throughput, not converted to
-            hours or dollars.
+            Observed activity and active users are measured. Dollar value is an
+            estimate, so it is shown as a range with the assumptions that drive
+            it stated on the report.
           </p>
         </div>
         <div className="cs-method-note">
-          <strong>Trust the number first</strong>
+          <strong>Measured first, modeled second</strong>
           <span>
-            If a QBR audience cannot defend it as avoided human work, it does not
-            belong in the dollar total.
+            Lead a renewal with the conservative floor and the workload evidence.
+            Never present a single unqualified ROI figure.
           </span>
         </div>
       </section>
@@ -374,8 +375,31 @@ export default function CustomerSuccessWorkspace() {
                     }
                     suffix="%"
                     step={5}
-                    help="Share of human record volume a team would have maintained by hand. API volume is excluded first."
+                    help="The single most disputed input. It drives most of the total."
                   />
+                  <label className="field cs-measured-field">
+                    <span className="field-label">Basis for that share</span>
+                    <span className="cs-toggle">
+                      <button
+                        type="button"
+                        className={assumptions.realizationMeasured ? "" : "is-on"}
+                        onClick={() => setAssumption("realizationMeasured", false)}
+                      >
+                        Assumed
+                      </button>
+                      <button
+                        type="button"
+                        className={assumptions.realizationMeasured ? "is-on" : ""}
+                        onClick={() => setAssumption("realizationMeasured", true)}
+                      >
+                        Measured
+                      </button>
+                    </span>
+                    <span className="field-help">
+                      Only choose Measured after sampling the raw export. The report
+                      states which basis was used.
+                    </span>
+                  </label>
                   <AssumptionField
                     label="Minutes saved per content action"
                     value={assumptions.contentMinutesSaved}
@@ -392,7 +416,7 @@ export default function CustomerSuccessWorkspace() {
                     onChange={(value) => setAssumption("assetMinutesSaved", value)}
                     suffix="min"
                     step={0.5}
-                    help="A conservative estimate for each observed download or share."
+                    help="Time to locate and retrieve one file without a shared library. Keep this low."
                   />
                   <AssumptionField
                     label="Minutes saved per syndication"
@@ -447,12 +471,72 @@ export default function CustomerSuccessWorkspace() {
           ) : (
             <>
               <div className="result-hero">
-                <p>Defensible labor value this period</p>
-                <strong>{money(result.periodValue)}</strong>
+                <p>Observed catalog workload run through PXM</p>
+                <strong>{result.fteEquivalent.toFixed(1)} FTE</strong>
                 <span>
-                  {number(result.totalHours)} estimated hours returned ·{" "}
-                  {activity.spanDays} days observed
+                  {activity.totalActions.toLocaleString()} observed actions across{" "}
+                  {activity.uniqueUsers} active users · {activity.spanDays} days
                 </span>
+              </div>
+
+              {result.compositionUnverified && (
+                <div className="cs-warning">
+                  <strong>Record composition is unverified</strong>
+                  <span>
+                    Only {result.automationSharePercent.toFixed(2)}% of{" "}
+                    {(
+                      activity.byCategory.bulk + activity.byCategory.automation
+                    ).toLocaleString()}{" "}
+                    records name an API or system actor. This export does not
+                    reliably label automation, so we cannot claim automated volume
+                    was removed. Treat the dollar figures as a range until a sampled
+                    audit classifies manual edits against bulk imports and channel
+                    write-backs.
+                  </span>
+                </div>
+              )}
+
+              <div className="benefit-card">
+                <div className="section-title">
+                  <h3>Estimated value range</h3>
+                  <span>
+                    {assumptions.realizationMeasured ? "Measured share" : "Assumed share"}
+                  </span>
+                </div>
+                <table className="cs-breakdown cs-scenarios">
+                  <thead>
+                    <tr>
+                      <th>Scenario</th>
+                      <th>Assumptions</th>
+                      <th>Value</th>
+                      <th>ROI</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.scenarios.map((scenario) => (
+                      <tr
+                        key={scenario.key}
+                        className={scenario.key === "expected" ? "is-expected" : ""}
+                      >
+                        <td>{scenario.label}</td>
+                        <td>
+                          {Math.round(scenario.realizationPercent)}% ·{" "}
+                          {number(scenario.secondsPerRecord)}s/record
+                        </td>
+                        <td>{money(scenario.periodValue)}</td>
+                        <td>
+                          {scenario.periodRoi === null
+                            ? "—"
+                            : `${Math.round(scenario.periodRoi)}%`}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="benefit-desc cs-range-note">
+                  Lead with the conservative floor. It is the number that survives
+                  scrutiny from a finance stakeholder.
+                </p>
               </div>
               <button
                 className="download-btn"
@@ -463,14 +547,10 @@ export default function CustomerSuccessWorkspace() {
               </button>
               <div className="metric-grid">
                 <div>
-                  <span>Period ROI</span>
-                  <strong>
-                    {result.periodRoi === null
-                      ? "—"
-                      : `${Math.round(result.periodRoi)}%`}
-                  </strong>
+                  <span>Expected-case value</span>
+                  <strong>{money(result.periodValue)}</strong>
                   <small>
-                    Period value minus period cost, divided by period cost.
+                    Directional estimate, not a measured result. See the range above.
                   </small>
                 </div>
                 <div>
@@ -516,7 +596,7 @@ export default function CustomerSuccessWorkspace() {
 
               <div className="benefit-card">
                 <div className="section-title">
-                  <h3>Labor we can defend in a QBR</h3>
+                  <h3>Expected case by activity type</h3>
                   <span>{money(result.periodValue)}</span>
                 </div>
                 <div className="benefit-list">
@@ -543,13 +623,24 @@ export default function CustomerSuccessWorkspace() {
                 <div className="cs-throughput">
                   <strong>Automated throughput — shown, not dollarized</strong>
                   <span>
-                    {activity.byCategory.automation.toLocaleString()} API or System
-                    Generated records. This is evidence of scale PXM processed. It is
-                    not converted to hours or dollars because no person would have
-                    done that work by hand at that volume.
+                    {activity.byCategory.automation.toLocaleString()} records, or{" "}
+                    {result.automationSharePercent.toFixed(2)}% of record volume. This
+                    is only what the export explicitly labels. It is not proof that
+                    the remainder was manual.
                   </span>
                 </div>
               )}
+
+              <div className="cs-context-note">
+                <strong>What would tighten this range</strong>
+                <span>
+                  Sample the raw Updates rows and classify them as manual UI edits,
+                  bulk imports, or channel write-backs, then enter that measured
+                  share. Confirm the loaded hourly rate against the brand&apos;s
+                  actual catalog staffing cost. Run a second period so workload can
+                  be shown as a trend rather than a snapshot.
+                </span>
+              </div>
 
               <div className="benefit-card">
                 <div className="section-title">

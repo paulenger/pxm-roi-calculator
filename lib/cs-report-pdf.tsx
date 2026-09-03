@@ -134,37 +134,74 @@ export function CsReportPDF({
         </View>
 
         <View style={styles.hero}>
-          <Text style={styles.eyebrow}>Defensible labor value</Text>
-          <Text style={styles.heroValue}>{money(result.periodValue)}</Text>
+          <Text style={styles.eyebrow}>Catalog workload run through PXM</Text>
+          <Text style={styles.heroValue}>{result.fteEquivalent.toFixed(1)} FTE</Text>
           <Text style={styles.heroSub}>
-            {hours(result.totalHours)} estimated hours of avoided human work · API and
-            System Generated volume is excluded from this total
+            {activity.totalActions.toLocaleString()} observed actions across{" "}
+            {activity.uniqueUsers} active users over {activity.spanDays} days
           </Text>
         </View>
 
         <View style={styles.grid}>
           <View style={styles.metric}>
-            <Text style={styles.metricLabel}>Period ROI</Text>
+            <Text style={styles.metricLabel}>Observed actions</Text>
             <Text style={styles.metricValue}>
-              {result.periodRoi === null ? "—" : `${Math.round(result.periodRoi)}%`}
+              {activity.totalActions.toLocaleString()}
             </Text>
+          </View>
+          <View style={styles.metric}>
+            <Text style={styles.metricLabel}>Active users</Text>
+            <Text style={styles.metricValue}>{activity.uniqueUsers}</Text>
           </View>
           <View style={styles.metric}>
             <Text style={styles.metricLabel}>Period PXM cost</Text>
             <Text style={styles.metricValue}>{money(result.periodCost)}</Text>
           </View>
           <View style={styles.metric}>
-            <Text style={styles.metricLabel}>Annualized run-rate</Text>
-            <Text style={styles.metricValue}>{money(result.annualizedValue)}</Text>
-          </View>
-          <View style={styles.metric}>
-            <Text style={styles.metricLabel}>Active users</Text>
-            <Text style={styles.metricValue}>{activity.uniqueUsers}</Text>
+            <Text style={styles.metricLabel}>Expected-case value</Text>
+            <Text style={styles.metricValue}>{money(result.periodValue)}</Text>
           </View>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Labor we can defend in a QBR</Text>
+          <Text style={styles.cardTitle}>
+            Estimated value range ·{" "}
+            {assumptions.realizationMeasured
+              ? "measured record share"
+              : "assumed record share"}
+          </Text>
+          {result.scenarios.map((scenario) => (
+            <View style={styles.row} key={scenario.key}>
+              <Text style={styles.rowLabel}>
+                {scenario.label} · {Math.round(scenario.realizationPercent)}% realized ·{" "}
+                {hours(scenario.secondsPerRecord)}s per record
+              </Text>
+              <Text style={styles.rowValue}>
+                {money(scenario.periodValue)}
+                {scenario.periodRoi === null
+                  ? ""
+                  : `  (${Math.round(scenario.periodRoi)}% ROI)`}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {result.compositionUnverified ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Confidence and open questions</Text>
+            <Text style={styles.note}>
+              Only {result.automationSharePercent.toFixed(2)}% of record volume names an
+              API or system actor, so this export does not reliably separate manual
+              edits from bulk imports and channel write-backs. The range above reflects
+              that uncertainty. A sampled audit of the raw Updates rows, plus
+              confirmation of the loaded hourly rate against actual catalog staffing
+              cost, would narrow it.
+            </Text>
+          </View>
+        ) : null}
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Expected case by activity type</Text>
           {values.map(([label, detail, value]) => (
             <View style={styles.row} key={label}>
               <Text style={styles.rowLabel}>
@@ -185,48 +222,65 @@ export function CsReportPDF({
 
         {activity.byCategory.automation > 0 ? (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Automated throughput — not dollarized</Text>
+            <Text style={styles.cardTitle}>
+              Attributed to an API or system actor — not dollarized
+            </Text>
             <View style={styles.row}>
               <Text style={styles.rowLabel}>
-                API and System Generated records processed
+                Records naming an API or system actor
               </Text>
               <Text style={styles.rowValue}>
                 {activity.byCategory.automation.toLocaleString()}
               </Text>
             </View>
-            <Text style={styles.note}>
-              This volume is evidence of scale. It is not converted to hours or dollars
-              because a person would not have performed that work by hand.
-            </Text>
           </View>
         ) : null}
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Value assumptions</Text>
+          <Text style={styles.cardTitle}>Expected-case assumptions</Text>
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Loaded hourly rate</Text>
             <Text style={styles.rowValue}>{money(assumptions.hourlyRate)}/hr</Text>
           </View>
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Seconds saved per record touched</Text>
-            <Text style={styles.rowValue}>{assumptions.bulkSecondsSaved} sec</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Share of record volume realized</Text>
-            <Text style={styles.rowValue}>{assumptions.bulkRealizationPercent}%</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Minutes saved per content action</Text>
-            <Text style={styles.rowValue}>{assumptions.contentMinutesSaved} min</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Minutes saved per asset action</Text>
-            <Text style={styles.rowValue}>{assumptions.assetMinutesSaved} min</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Minutes saved per syndication action</Text>
-            <Text style={styles.rowValue}>{assumptions.syndicationMinutesSaved} min</Text>
-          </View>
+          {activity.byCategory.bulk > 0 ? (
+            <>
+              <View style={styles.row}>
+                <Text style={styles.rowLabel}>Seconds saved per record</Text>
+                <Text style={styles.rowValue}>{assumptions.bulkSecondsSaved} sec</Text>
+              </View>
+              <View style={styles.row}>
+                <Text style={styles.rowLabel}>
+                  Share of record volume realized ·{" "}
+                  {assumptions.realizationMeasured
+                    ? "measured from sample"
+                    : "planning assumption"}
+                </Text>
+                <Text style={styles.rowValue}>
+                  {assumptions.bulkRealizationPercent}%
+                </Text>
+              </View>
+            </>
+          ) : null}
+          {activity.byCategory.content > 0 ? (
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>Minutes saved per content action</Text>
+              <Text style={styles.rowValue}>{assumptions.contentMinutesSaved} min</Text>
+            </View>
+          ) : null}
+          {activity.byCategory.asset > 0 ? (
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>Minutes saved per asset action</Text>
+              <Text style={styles.rowValue}>{assumptions.assetMinutesSaved} min</Text>
+            </View>
+          ) : null}
+          {activity.byCategory.syndication > 0 ? (
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>Minutes saved per syndication</Text>
+              <Text style={styles.rowValue}>
+                {assumptions.syndicationMinutesSaved} min
+              </Text>
+            </View>
+          ) : null}
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Annual PXM investment</Text>
             <Text style={styles.rowValue}>{money(assumptions.annualPxmInvestment)}</Text>
@@ -234,12 +288,13 @@ export function CsReportPDF({
         </View>
 
         <Text style={styles.note}>
-          Headline dollars include only human-driven activity. API updates and System
-          Generated records are counted as throughput and excluded from value. Remaining
-          human record volume is valued per record and discounted to the share a team
-          would realistically have maintained by hand. Period cost is the annual PXM
-          investment prorated to {activity.spanDays} reporting days. Annualized run-rate
-          is a projection, not a guarantee.
+          Observed action counts and active users come from the PXM activity export and
+          are measured. Dollar values are directional estimates based on standard
+          time-savings assumptions per activity type; actual savings vary by team
+          workflow. Update activity is counted in records and attributes touched rather
+          than in tasks, so it is valued per record and discounted to the share a team
+          would plausibly have maintained by hand. Period cost is the annual PXM
+          investment prorated to {activity.spanDays} reporting days.
         </Text>
       </Page>
     </Document>

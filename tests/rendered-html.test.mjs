@@ -174,6 +174,52 @@ test("does not convert API or System Generated volume into dollars", async () =>
   assert.ok(result.periodValue < 100);
 });
 
+test("reports a scenario band and flags unverified record composition", async () => {
+  const model = await loadCsModel();
+  const rows = model.parseActivitySheets([
+    {
+      name: "Updates",
+      rows: [
+        ["Date", "User", "Hostname", "Count", "Action"],
+        ["7/10/2026", "Peter Jakl", "helmethouse", 254_064, "Attribute(s) Updated"],
+      ],
+    },
+  ]);
+  const summary = model.summarizeActivity(rows, {
+    start: new Date("2026-07-04T00:00:00"),
+    end: new Date("2026-08-31T00:00:00"),
+  });
+  const result = model.calculateCsValue(summary, {
+    hourlyRate: 50,
+    contentMinutesSaved: 9,
+    bulkSecondsSaved: 30,
+    bulkRealizationPercent: 25,
+    realizationMeasured: false,
+    assetMinutesSaved: 5,
+    syndicationMinutesSaved: 7.5,
+    annualPxmInvestment: 31_000,
+  });
+
+  // An export that labels almost no automation cannot support a claim that
+  // automated volume was removed.
+  assert.equal(result.compositionUnverified, true);
+
+  const [conservative, expected, upper] = result.scenarios;
+  assert.equal(conservative.label, "Conservative");
+  assert.equal(expected.label, "Expected");
+  assert.equal(upper.label, "Upper bound");
+
+  // Pi's audit band: 10% / 15s at the floor, 40% / 45s at the ceiling.
+  assert.equal(Math.round(conservative.realizationPercent), 10);
+  assert.equal(conservative.secondsPerRecord, 15);
+  assert.equal(Math.round(upper.realizationPercent), 40);
+  assert.equal(upper.secondsPerRecord, 45);
+
+  assert.ok(conservative.periodValue < expected.periodValue);
+  assert.ok(expected.periodValue < upper.periodValue);
+  assert.equal(Math.round(expected.periodValue), Math.round(result.periodValue));
+});
+
 test("flags value that exceeds what the observed team could perform", async () => {
   const model = await loadCsModel();
   const assumptions = {
