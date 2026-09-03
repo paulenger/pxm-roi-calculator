@@ -86,11 +86,92 @@ test("reads every workbook tab and skips Active Users rollups", async () => {
   ]);
   const summary = model.summarizeActivity(rows);
 
-  assert.equal(summary.byCategory.content, 2);
+  assert.equal(summary.byCategory.bulk, 2);
   assert.equal(summary.byCategory.asset, 2);
   assert.equal(summary.byCategory.syndication, 1);
   assert.equal(summary.totalActions, 5);
   assert.equal(summary.byAction.Share ?? 0, 2);
+});
+
+test("counts update volume as records, not as human tasks", async () => {
+  const model = await loadCsModel();
+  const rows = model.parseActivitySheets([
+    {
+      name: "Updates",
+      rows: [
+        ["Date", "User", "Hostname", "Count", "Action"],
+        ["7/10/2026", "Peter Jakl", "helmethouse", 120_000, "Attribute(s) Updated"],
+        ["7/11/2026", "System Generated", "helmethouse", 134_064, "API Update"],
+      ],
+    },
+  ]);
+  const summary = model.summarizeActivity(rows, {
+    start: new Date("2026-07-04T00:00:00"),
+    end: new Date("2026-08-31T00:00:00"),
+  });
+  const result = model.calculateCsValue(summary, {
+    hourlyRate: 50,
+    contentMinutesSaved: 9,
+    bulkSecondsSaved: 30,
+    bulkRealizationPercent: 25,
+    assetMinutesSaved: 5,
+    syndicationMinutesSaved: 7.5,
+    annualPxmInvestment: 31_000,
+  });
+
+  assert.equal(summary.byCategory.bulk, 254_064);
+  assert.equal(summary.byCategory.content, 0);
+  assert.equal(summary.automatedActions, 134_064);
+
+  // Pricing 254,064 records at a 9-minute task rate implied 38,347 hours.
+  assert.ok(result.bulkHours < 1_000, `bulk hours were ${result.bulkHours}`);
+  assert.equal(Math.round(result.periodValue), 26_465);
+});
+
+test("flags value that exceeds what the observed team could perform", async () => {
+  const model = await loadCsModel();
+  const assumptions = {
+    hourlyRate: 50,
+    contentMinutesSaved: 9,
+    bulkSecondsSaved: 30,
+    bulkRealizationPercent: 25,
+    assetMinutesSaved: 5,
+    syndicationMinutesSaved: 7.5,
+    annualPxmInvestment: 31_000,
+  };
+  const base = {
+    brand: "helmethouse",
+    periodStart: new Date("2026-07-04T00:00:00"),
+    periodEnd: new Date("2026-08-31T00:00:00"),
+    spanDays: 59,
+    rows: 1,
+    totalActions: 254_064,
+    uniqueUsers: 48,
+    automatedActions: 0,
+    byAction: {},
+    breakdown: [],
+    byCategory: {
+      content: 0,
+      bulk: 254_064,
+      asset: 0,
+      syndication: 0,
+      import: 0,
+      adoption: 0,
+      other: 0,
+    },
+  };
+
+  const sane = model.calculateCsValue(base, assumptions);
+  assert.equal(sane.overCapacity, false);
+  assert.ok(sane.fteEquivalent < 48);
+
+  // The old behavior: every record priced as a 9-minute human task.
+  const inflated = model.calculateCsValue(
+    { ...base, byCategory: { ...base.byCategory, bulk: 0, content: 254_064 } },
+    assumptions,
+  );
+  assert.equal(inflated.overCapacity, true);
+  assert.ok(inflated.fteEquivalent > 100);
 });
 
 test("counts the Active Users roster without dollarizing it", async () => {
@@ -153,9 +234,12 @@ test("prorates value and annual investment to the same period", async () => {
     rows: 1,
     totalActions: 65,
     uniqueUsers: 10,
+    automatedActions: 0,
     byAction: { Share: 65 },
+    breakdown: [],
     byCategory: {
       content: 0,
+      bulk: 0,
       asset: 65,
       syndication: 0,
       import: 0,
@@ -166,6 +250,8 @@ test("prorates value and annual investment to the same period", async () => {
   const result = model.calculateCsValue(summary, {
     hourlyRate: 50,
     contentMinutesSaved: 9,
+    bulkSecondsSaved: 30,
+    bulkRealizationPercent: 25,
     assetMinutesSaved: 5,
     syndicationMinutesSaved: 7.5,
     annualPxmInvestment: 31_000,

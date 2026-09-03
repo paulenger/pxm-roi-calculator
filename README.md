@@ -37,12 +37,28 @@ or 59 days.
 
 Observed actions are grouped into:
 
-- Content operations: updates, attributes, collection folders, and media edits
+- Record and attribute maintenance: attribute and API updates
+- Content operations: collection folders and media edits
 - Asset access and sharing: downloads and shares
 - Syndication: syndication and publish-to-channel events
 - Context only: imports, adoption, and unrecognized actions
 
 Context-only activity is deliberately not dollarized to reduce double-counting.
+
+### Why update volume is priced differently
+
+`Count` does not mean the same thing on every tab. On Shares and Downloads it
+counts human tasks. On Updates it counts records and attributes touched, and a
+single bulk edit or API push can run that into the thousands. Pricing those at
+a per-task rate produces impossible totals, so they are valued per record and
+multiplied by a realization share — the portion of that volume a team would
+plausibly have maintained by hand. Defaults are 30 seconds per record at 25%
+realization.
+
+The report also shows the implied full-time-equivalent workload next to the
+active user count. If the estimate claims more avoided work than the observed
+team could physically perform, the card turns red. Check that number before
+sending a report to a customer.
 The annual PXM investment is prorated to the exact report window before period
 ROI is calculated. Annualized value is displayed separately as a run-rate
 projection.

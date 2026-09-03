@@ -15,9 +15,21 @@ import { readActivityFile } from "@/lib/read-activity-file";
 const DEFAULT_ASSUMPTIONS: CsValueAssumptions = {
   hourlyRate: 50,
   contentMinutesSaved: 9,
+  bulkSecondsSaved: 30,
+  bulkRealizationPercent: 25,
   assetMinutesSaved: 5,
   syndicationMinutesSaved: 7.5,
   annualPxmInvestment: 31_000,
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  content: "Content ops",
+  bulk: "Record & attribute volume",
+  asset: "Asset access",
+  syndication: "Syndication",
+  import: "Context only",
+  adoption: "Context only",
+  other: "Context only",
 };
 
 const money = (value: number) =>
@@ -183,6 +195,15 @@ export default function CustomerSuccessWorkspace() {
   const valueRows = activity && result
     ? [
         {
+          name: "Record & attribute maintenance",
+          count: activity.byCategory.bulk,
+          minutes: assumptions.bulkSecondsSaved / 60,
+          hours: result.bulkHours,
+          value: result.bulkValue,
+          color: "#7426ff",
+          detail: `${activity.byCategory.bulk.toLocaleString()} records touched × ${assumptions.bulkRealizationPercent}% realized × ${assumptions.bulkSecondsSaved}s = ${number(result.bulkHours)} hours`,
+        },
+        {
           name: "Content operations",
           count: activity.byCategory.content,
           minutes: assumptions.contentMinutesSaved,
@@ -206,7 +227,7 @@ export default function CustomerSuccessWorkspace() {
           value: result.syndicationValue,
           color: "#ec4899",
         },
-      ]
+      ].filter((item) => item.count > 0)
     : [];
 
   return (
@@ -301,6 +322,10 @@ export default function CustomerSuccessWorkspace() {
                   <strong>{activity.totalActions.toLocaleString()}</strong>
                 </div>
                 <div>
+                  <span>Automated</span>
+                  <strong>{activity.automatedActions.toLocaleString()}</strong>
+                </div>
+                <div>
                   <span>Active people</span>
                   <strong>{activity.uniqueUsers}</strong>
                 </div>
@@ -331,6 +356,24 @@ export default function CustomerSuccessWorkspace() {
                     help="Fully loaded hourly cost. The Sales default is $50/hr."
                   />
                   <AssumptionField
+                    label="Seconds saved per record touched"
+                    value={assumptions.bulkSecondsSaved}
+                    onChange={(value) => setAssumption("bulkSecondsSaved", value)}
+                    suffix="sec"
+                    step={5}
+                    help="Updates counts records and attributes, not tasks. Price them per record."
+                  />
+                  <AssumptionField
+                    label="Share of record volume realized"
+                    value={assumptions.bulkRealizationPercent}
+                    onChange={(value) =>
+                      setAssumption("bulkRealizationPercent", value)
+                    }
+                    suffix="%"
+                    step={5}
+                    help="No team would hand-maintain every record a bulk edit touched. 25% is conservative."
+                  />
+                  <AssumptionField
                     label="Minutes saved per content action"
                     value={assumptions.contentMinutesSaved}
                     onChange={(value) =>
@@ -338,7 +381,7 @@ export default function CustomerSuccessWorkspace() {
                     }
                     suffix="min"
                     step={0.5}
-                    help="Defaults to 9 minutes: 15 manual minutes × 60% saved."
+                    help="Media and collection work, at 15 manual minutes × 60% saved."
                   />
                   <AssumptionField
                     label="Minutes saved per asset action"
@@ -452,6 +495,22 @@ export default function CustomerSuccessWorkspace() {
                 </div>
               </div>
 
+              <div className={`cs-capacity ${result.overCapacity ? "is-warning" : ""}`}>
+                <div>
+                  <span>Implied workload</span>
+                  <strong>{result.fteEquivalent.toFixed(1)} FTE</strong>
+                  <small>
+                    {number(result.totalHours)} hours ÷ {activity.spanDays} days of
+                    full-time capacity
+                  </small>
+                </div>
+                <p>
+                  {result.overCapacity
+                    ? `This claims more avoided work than ${activity.uniqueUsers} active people could perform. Lower the per-record seconds or the realized share before sharing it.`
+                    : `Defensible against ${activity.uniqueUsers} active users. A QBR audience will check this number first.`}
+                </p>
+              </div>
+
               <div className="benefit-card">
                 <div className="section-title">
                   <h3>Observed value by lever</h3>
@@ -468,12 +527,46 @@ export default function CustomerSuccessWorkspace() {
                         <strong>{money(item.value)}</strong>
                       </div>
                       <p className="benefit-desc">
-                        {item.count.toLocaleString()} actions × {item.minutes} min ={" "}
-                        {number(item.hours)} hours
+                        {"detail" in item && item.detail
+                          ? item.detail
+                          : `${item.count.toLocaleString()} actions × ${item.minutes} min = ${number(item.hours)} hours`}
                       </p>
                     </div>
                   ))}
                 </div>
+              </div>
+
+              <div className="benefit-card">
+                <div className="section-title">
+                  <h3>What the export actually contains</h3>
+                  <span>{activity.totalActions.toLocaleString()} counted</span>
+                </div>
+                <table className="cs-breakdown">
+                  <thead>
+                    <tr>
+                      <th>Action</th>
+                      <th>Treated as</th>
+                      <th>Count</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activity.breakdown.slice(0, 12).map((entry) => (
+                      <tr key={`${entry.action}-${entry.category}`}>
+                        <td>{entry.action}</td>
+                        <td>
+                          {CATEGORY_LABELS[entry.category] ?? entry.category}
+                          {entry.automatedCount > 0 && (
+                            <em>
+                              {" "}
+                              · {entry.automatedCount.toLocaleString()} automated
+                            </em>
+                          )}
+                        </td>
+                        <td>{entry.count.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
 
               <button
@@ -491,8 +584,7 @@ export default function CustomerSuccessWorkspace() {
                       <div className="formula-row">
                         <span>Observed value</span>
                         <code>
-                          {item.count.toLocaleString()} × {item.minutes} min ÷ 60 ×{" "}
-                          {money(assumptions.hourlyRate)}/hr
+                          {number(item.hours)} hours × {money(assumptions.hourlyRate)}/hr
                         </code>
                         <strong>{money(item.value)}</strong>
                       </div>

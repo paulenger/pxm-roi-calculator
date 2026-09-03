@@ -148,7 +148,7 @@ h1 { font-size: clamp(38px, 4vw, 64px); letter-spacing: -.045em; line-height: .9
 .cs-observed {
   margin-top: 16px;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 .cs-observed > div {
@@ -197,6 +197,46 @@ h1 { font-size: clamp(38px, 4vw, 64px); letter-spacing: -.045em; line-height: .9
   line-height: 1.45;
 }
 .cs-context-note strong { color: #dbe2ee; font-size: 11px; }
+
+.cs-capacity {
+  display: grid;
+  grid-template-columns: minmax(0, 150px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  background: rgba(8, 11, 18, .45);
+}
+.cs-capacity span { display: block; color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .05em; }
+.cs-capacity strong { display: block; margin-top: 4px; font-size: 22px; }
+.cs-capacity small { display: block; margin-top: 4px; color: #6f7a8d; font-size: 10px; line-height: 1.4; }
+.cs-capacity p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.cs-capacity.is-warning {
+  border-color: rgba(248, 113, 113, .55);
+  background: rgba(248, 113, 113, .08);
+}
+.cs-capacity.is-warning strong, .cs-capacity.is-warning p { color: #fca5a5; }
+
+.cs-breakdown { width: 100%; border-collapse: collapse; font-size: 11px; }
+.cs-breakdown th {
+  text-align: left;
+  color: var(--muted);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-weight: 600;
+  padding: 0 0 7px;
+}
+.cs-breakdown th:last-child, .cs-breakdown td:last-child { text-align: right; }
+.cs-breakdown td {
+  padding: 7px 0;
+  border-top: 1px solid var(--line);
+  color: #c2cad8;
+  overflow-wrap: anywhere;
+}
+.cs-breakdown td:last-child { font-weight: 700; color: #f7f8fb; white-space: nowrap; }
+.cs-breakdown em { color: #6f7a8d; font-style: normal; }
 
 .workspace {
   max-width: 1450px;

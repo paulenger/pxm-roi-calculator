@@ -1,5 +1,6 @@
 export type CsActivityCategory =
   | "content"
+  | "bulk"
   | "asset"
   | "syndication"
   | "import"
@@ -13,6 +14,15 @@ export type CsActivityRow = {
   count: number;
   action: string;
   category: CsActivityCategory;
+  automated: boolean;
+};
+
+export type ActionBreakdown = {
+  action: string;
+  category: CsActivityCategory;
+  count: number;
+  events: number;
+  automatedCount: number;
 };
 
 export type CsActivitySummary = {
@@ -23,8 +33,10 @@ export type CsActivitySummary = {
   rows: number;
   totalActions: number;
   uniqueUsers: number;
+  automatedActions: number;
   byAction: Record<string, number>;
   byCategory: Record<CsActivityCategory, number>;
+  breakdown: ActionBreakdown[];
 };
 
 export type ReportingPeriod = {
@@ -35,6 +47,8 @@ export type ReportingPeriod = {
 export type CsValueAssumptions = {
   hourlyRate: number;
   contentMinutesSaved: number;
+  bulkSecondsSaved: number;
+  bulkRealizationPercent: number;
   assetMinutesSaved: number;
   syndicationMinutesSaved: number;
   annualPxmInvestment: number;
@@ -42,10 +56,12 @@ export type CsValueAssumptions = {
 
 export type CsValueResult = {
   contentHours: number;
+  bulkHours: number;
   assetHours: number;
   syndicationHours: number;
   totalHours: number;
   contentValue: number;
+  bulkValue: number;
   assetValue: number;
   syndicationValue: number;
   periodValue: number;
@@ -56,10 +72,15 @@ export type CsValueResult = {
   annualizedNetValue: number;
   annualizedRoi: number | null;
   paybackMonths: number | null;
+  billableBulkCount: number;
+  fteEquivalent: number;
+  fteCeiling: number;
+  overCapacity: boolean;
 };
 
 const EMPTY_CATEGORIES: Record<CsActivityCategory, number> = {
   content: 0,
+  bulk: 0,
   asset: 0,
   syndication: 0,
   import: 0,
@@ -67,6 +88,13 @@ const EMPTY_CATEGORIES: Record<CsActivityCategory, number> = {
   other: 0,
 };
 
+/**
+ * The Count column does not mean the same thing on every tab. On Shares and
+ * Downloads it counts human tasks. On Updates it counts records and attributes
+ * touched, which a single bulk edit or API push can run into the thousands.
+ * Pricing those at a per-task rate is what produces impossible totals, so they
+ * are classified separately and valued per record instead.
+ */
 export function classifyAction(action: string): CsActivityCategory {
   const value = action.trim().toLowerCase();
 
@@ -87,17 +115,31 @@ export function classifyAction(action: string): CsActivityCategory {
   }
   if (value.includes("import")) return "import";
   if (
-    value.includes("update") ||
     value.includes("attribute") ||
+    value.includes("api") ||
+    value.includes("update")
+  ) {
+    return "bulk";
+  }
+  if (
     value.includes("collection folder") ||
     value.includes("media added") ||
-    value.includes("media removed") ||
-    value.includes("api created")
+    value.includes("media removed")
   ) {
     return "content";
   }
   if (value.includes("active user") || value === "login") return "adoption";
   return "other";
+}
+
+// Machine-run changes still count as records maintained, but no person spent
+// time on them, so they are reported separately from human activity.
+const AUTOMATION_USERS = new Set(["system generated", "system", "api", "integration"]);
+
+function isAutomatedActor(user: string, action: string): boolean {
+  const actor = user.trim().toLowerCase();
+  if (AUTOMATION_USERS.has(actor)) return true;
+  return !actor && action.toLowerCase().includes("api");
 }
 
 function normalizeHeader(value: string): string {
@@ -183,13 +225,16 @@ export function parseActivityTable(
     const failed =
       statusIndex >= 0 &&
       FAILED_STATUSES.has(cellString(record[statusIndex]).toLowerCase());
+    const user =
+      userIndex >= 0 ? cellString(record[userIndex]).replace(/\s+/g, " ") : "";
     parsed.push({
       date,
-      user: userIndex >= 0 ? cellString(record[userIndex]).replace(/\s+/g, " ") : "",
+      user,
       hostname: hostIndex >= 0 ? cellString(record[hostIndex]) : "",
       count,
       action,
       category: failed ? "other" : classifyAction(`${fallbackAction} ${action}`.trim()),
+      automated: isAutomatedActor(user, `${fallbackAction} ${action}`),
     });
   }
   return parsed;
@@ -315,10 +360,19 @@ export function summarizeActivity(
     Math.max(0, Math.round((periodEnd.getTime() - periodStart.getTime()) / 86_400_000)) + 1;
   const byAction: Record<string, number> = {};
   const byCategory = { ...EMPTY_CATEGORIES };
+  const breakdownByAction = new Map<string, ActionBreakdown>();
 
   for (const row of rows) {
     byAction[row.action] = (byAction[row.action] || 0) + row.count;
     byCategory[row.category] += row.count;
+    const key = `${row.action}::${row.category}`;
+    const entry =
+      breakdownByAction.get(key) ??
+      { action: row.action, category: row.category, count: 0, events: 0, automatedCount: 0 };
+    entry.count += row.count;
+    entry.events += 1;
+    if (row.automated) entry.automatedCount += row.count;
+    breakdownByAction.set(key, entry);
   }
 
   const hostnames = [...new Set(rows.map((row) => row.hostname).filter(Boolean))];
@@ -335,10 +389,17 @@ export function summarizeActivity(
     rows: rows.length,
     totalActions: rows.reduce((sum, row) => sum + row.count, 0),
     uniqueUsers: people.size,
+    automatedActions: rows
+      .filter((row) => row.automated)
+      .reduce((sum, row) => sum + row.count, 0),
     byAction,
     byCategory,
+    breakdown: [...breakdownByAction.values()].sort((a, b) => b.count - a.count),
   };
 }
+
+// One full-time equivalent, used only to sanity-check the implied labor.
+const FTE_HOURS_PER_YEAR = 2080;
 
 export function calculateCsValue(
   activity: CsActivitySummary,
@@ -346,14 +407,22 @@ export function calculateCsValue(
 ): CsValueResult {
   const contentHours =
     (activity.byCategory.content * assumptions.contentMinutesSaved) / 60;
+
+  // Nobody would have hand-maintained every record a bulk edit touched, so only
+  // the realized share of that volume is credited, at a per-record rate.
+  const realization = Math.min(Math.max(assumptions.bulkRealizationPercent, 0), 100) / 100;
+  const billableBulkCount = activity.byCategory.bulk * realization;
+  const bulkHours = (billableBulkCount * assumptions.bulkSecondsSaved) / 3600;
+
   const assetHours = (activity.byCategory.asset * assumptions.assetMinutesSaved) / 60;
   const syndicationHours =
     (activity.byCategory.syndication * assumptions.syndicationMinutesSaved) / 60;
-  const totalHours = contentHours + assetHours + syndicationHours;
+  const totalHours = contentHours + bulkHours + assetHours + syndicationHours;
   const contentValue = contentHours * assumptions.hourlyRate;
+  const bulkValue = bulkHours * assumptions.hourlyRate;
   const assetValue = assetHours * assumptions.hourlyRate;
   const syndicationValue = syndicationHours * assumptions.hourlyRate;
-  const periodValue = contentValue + assetValue + syndicationValue;
+  const periodValue = contentValue + bulkValue + assetValue + syndicationValue;
   const periodCost = assumptions.annualPxmInvestment * (activity.spanDays / 365);
   const periodNetValue = periodValue - periodCost;
   const periodRoi = periodCost > 0 ? (periodNetValue / periodCost) * 100 : null;
@@ -366,12 +435,18 @@ export function calculateCsValue(
   const paybackMonths =
     annualizedValue > 0 ? (assumptions.annualPxmInvestment / annualizedValue) * 12 : null;
 
+  const periodCapacity = FTE_HOURS_PER_YEAR * (activity.spanDays / 365);
+  const fteEquivalent = periodCapacity > 0 ? totalHours / periodCapacity : 0;
+  const fteCeiling = activity.uniqueUsers;
+
   return {
     contentHours,
+    bulkHours,
     assetHours,
     syndicationHours,
     totalHours,
     contentValue,
+    bulkValue,
     assetValue,
     syndicationValue,
     periodValue,
@@ -382,5 +457,9 @@ export function calculateCsValue(
     annualizedNetValue,
     annualizedRoi,
     paybackMonths,
+    billableBulkCount,
+    fteEquivalent,
+    fteCeiling,
+    overCapacity: fteCeiling > 0 && fteEquivalent > fteCeiling,
   };
 }

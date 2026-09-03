@@ -93,11 +93,29 @@ export function CsReportPDF({
   assumptions: CsValueAssumptions;
   result: CsValueResult;
 }) {
-  const values = [
-    ["Content operations", activity.byCategory.content, result.contentValue],
-    ["Asset access & sharing", activity.byCategory.asset, result.assetValue],
-    ["Syndication", activity.byCategory.syndication, result.syndicationValue],
-  ] as const;
+  const levers: [string, string, number][] = [
+    [
+      "Record & attribute maintenance",
+      `${activity.byCategory.bulk.toLocaleString()} records touched · ${assumptions.bulkRealizationPercent}% realized`,
+      result.bulkValue,
+    ],
+    [
+      "Content operations",
+      `${activity.byCategory.content.toLocaleString()} observed actions`,
+      result.contentValue,
+    ],
+    [
+      "Asset access & sharing",
+      `${activity.byCategory.asset.toLocaleString()} observed actions`,
+      result.assetValue,
+    ],
+    [
+      "Syndication",
+      `${activity.byCategory.syndication.toLocaleString()} observed actions`,
+      result.syndicationValue,
+    ],
+  ];
+  const values = levers.filter(([, , value]) => value > 0);
 
   return (
     <Document title={`${activity.brand} PXM customer value report`} author="Pattern">
@@ -146,14 +164,22 @@ export function CsReportPDF({
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Observed activity and estimated value</Text>
-          {values.map(([label, count, value]) => (
+          {values.map(([label, detail, value]) => (
             <View style={styles.row} key={label}>
               <Text style={styles.rowLabel}>
-                {label} · {count.toLocaleString()} observed actions
+                {label} · {detail}
               </Text>
               <Text style={styles.rowValue}>{money(value)}</Text>
             </View>
           ))}
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>
+              Implied workload across {activity.uniqueUsers} active users
+            </Text>
+            <Text style={styles.rowValue}>
+              {result.fteEquivalent.toFixed(1)} FTE
+            </Text>
+          </View>
         </View>
 
         <View style={styles.card}>
@@ -161,6 +187,14 @@ export function CsReportPDF({
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Loaded hourly rate</Text>
             <Text style={styles.rowValue}>{money(assumptions.hourlyRate)}/hr</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Seconds saved per record touched</Text>
+            <Text style={styles.rowValue}>{assumptions.bulkSecondsSaved} sec</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Share of record volume realized</Text>
+            <Text style={styles.rowValue}>{assumptions.bulkRealizationPercent}%</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Minutes saved per content action</Text>
@@ -181,10 +215,12 @@ export function CsReportPDF({
         </View>
 
         <Text style={styles.note}>
-          Observed action counts come from the uploaded PXM activity export. Dollar values are
-          directional estimates based on the assumptions shown above. Period cost is the annual
-          PXM investment prorated to {activity.spanDays} reporting days. Annualized run-rate is a
-          projection and not a guarantee of future activity or savings.
+          Observed counts come from the uploaded PXM activity export. Update activity is counted
+          in records and attributes touched rather than in tasks, so it is valued per record and
+          discounted to the share a team would realistically have maintained by hand. Dollar
+          values are directional estimates based on the assumptions shown above. Period cost is
+          the annual PXM investment prorated to {activity.spanDays} reporting days. Annualized
+          run-rate is a projection and not a guarantee of future activity or savings.
         </Text>
       </Page>
     </Document>
