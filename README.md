@@ -73,10 +73,16 @@ figure that survives scrutiny from a finance stakeholder.
 The realized share can be marked **measured** once a CSM samples the raw Updates
 rows and classifies them as manual UI edits, bulk imports, or channel
 write-backs. The report prints which basis was used, because an assumed ratio
-and a measured one do not deserve equal confidence.
+and a measured one do not deserve equal confidence. Assumed reports carry a
+non-dismissable DRAFT watermark until a sample methodology note is attached.
 
-Assumptions that contribute nothing to a given report are omitted from the
-printed assumptions block, so the report never lists a rate it did not use.
+**Lead with the conservative scenario.** Summary tiles, annualized run-rate, and
+payback are computed for all three scenarios; the conservative floor is the
+primary tile. API and system actors are excluded from dollars on every action
+type where the export labels them, with per-type counts shown even when zero.
+
+When two or more periods exist for the same brand, workload trend (FTE and
+actions) is shown as the primary renewal talking point.
 
 The report also shows the implied full-time-equivalent workload next to the
 active user count. If the estimate claims more avoided work than the observed

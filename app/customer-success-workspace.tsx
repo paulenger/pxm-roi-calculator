@@ -1,8 +1,14 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { pdf } from "@react-pdf/renderer";
 import { CsReportPDF } from "@/lib/cs-report-pdf";
+import {
+  periodsForBrand,
+  savePeriodSnapshot,
+  type PeriodTrend,
+  type StoredPeriodSnapshot,
+} from "@/lib/cs-period-history";
 import {
   calculateCsValue,
   reportingPeriodFromFilenames,
@@ -18,6 +24,8 @@ const DEFAULT_ASSUMPTIONS: CsValueAssumptions = {
   bulkSecondsSaved: 30,
   bulkRealizationPercent: 25,
   realizationMeasured: false,
+  realizationSampleNote: "",
+  hourlyRateConfirmed: false,
   assetMinutesSaved: 2,
   syndicationMinutesSaved: 7.5,
   annualPxmInvestment: 31_000,
@@ -131,6 +139,57 @@ export default function CustomerSuccessWorkspace() {
     [activity, brandName],
   );
 
+  const conservative = result?.scenarios.find((scenario) => scenario.key === "conservative");
+  const expected = result?.scenarios.find((scenario) => scenario.key === "expected");
+  const upper = result?.scenarios.find((scenario) => scenario.key === "upper");
+  const isDraftReport =
+    !assumptions.realizationMeasured || !assumptions.realizationSampleNote.trim();
+
+  const periodTrend = useMemo((): PeriodTrend | null => {
+    if (!reportActivity || !result || !conservative || !expected) return null;
+    const current: StoredPeriodSnapshot = {
+      brand: reportActivity.brand,
+      periodStart: reportActivity.periodStart.toISOString(),
+      periodEnd: reportActivity.periodEnd.toISOString(),
+      spanDays: reportActivity.spanDays,
+      fteEquivalent: result.fteEquivalent,
+      totalActions: reportActivity.totalActions,
+      uniqueUsers: reportActivity.uniqueUsers,
+      conservativeValue: conservative.periodValue,
+      expectedValue: expected.periodValue,
+      savedAt: new Date().toISOString(),
+    };
+    const currentKey = `${current.periodStart}::${current.periodEnd}`;
+    const prior = periodsForBrand(reportActivity.brand).filter(
+      (entry) => `${entry.periodStart}::${entry.periodEnd}` !== currentKey,
+    );
+    if (!prior.length) return null;
+    const previous = prior[prior.length - 1];
+    return {
+      previous,
+      current,
+      fteDelta: current.fteEquivalent - previous.fteEquivalent,
+      actionsDelta: current.totalActions - previous.totalActions,
+      usersDelta: current.uniqueUsers - previous.uniqueUsers,
+    };
+  }, [reportActivity, result, conservative, expected]);
+
+  useEffect(() => {
+    if (!reportActivity || !result || !conservative || !expected) return;
+    savePeriodSnapshot({
+      brand: reportActivity.brand,
+      periodStart: reportActivity.periodStart.toISOString(),
+      periodEnd: reportActivity.periodEnd.toISOString(),
+      spanDays: reportActivity.spanDays,
+      fteEquivalent: result.fteEquivalent,
+      totalActions: reportActivity.totalActions,
+      uniqueUsers: reportActivity.uniqueUsers,
+      conservativeValue: conservative.periodValue,
+      expectedValue: expected.periodValue,
+      savedAt: new Date().toISOString(),
+    });
+  }, [reportActivity, result, conservative, expected]);
+
   const setAssumption = <K extends keyof CsValueAssumptions>(
     key: K,
     value: CsValueAssumptions[K],
@@ -179,6 +238,8 @@ export default function CustomerSuccessWorkspace() {
           activity={reportActivity}
           assumptions={assumptions}
           result={result}
+          isDraft={isDraftReport}
+          periodTrend={periodTrend}
         />,
       ).toBlob();
       const url = URL.createObjectURL(blob);
@@ -357,8 +418,34 @@ export default function CustomerSuccessWorkspace() {
                     onChange={(value) => setAssumption("hourlyRate", value)}
                     prefix="$"
                     suffix="/hr"
-                    help="Fully loaded hourly cost. The Sales default is $50/hr."
+                    help={
+                      assumptions.hourlyRateConfirmed
+                        ? "Confirmed against this brand's staffing cost."
+                        : "Pattern default until confirmed with the brand."
+                    }
                   />
+                  <label className="field cs-measured-field">
+                    <span className="field-label">Rate confirmed with brand</span>
+                    <span className="cs-toggle">
+                      <button
+                        type="button"
+                        className={assumptions.hourlyRateConfirmed ? "is-on" : ""}
+                        onClick={() => setAssumption("hourlyRateConfirmed", true)}
+                      >
+                        Confirmed
+                      </button>
+                      <button
+                        type="button"
+                        className={assumptions.hourlyRateConfirmed ? "" : "is-on"}
+                        onClick={() => setAssumption("hourlyRateConfirmed", false)}
+                      >
+                        Default
+                      </button>
+                    </span>
+                    <span className="field-help">
+                      Unconfirmed rates are flagged on the exported report.
+                    </span>
+                  </label>
                   <AssumptionField
                     label="Seconds saved per record touched"
                     value={assumptions.bulkSecondsSaved}
@@ -396,10 +483,27 @@ export default function CustomerSuccessWorkspace() {
                       </button>
                     </span>
                     <span className="field-help">
-                      Only choose Measured after sampling the raw export. The report
-                      states which basis was used.
+                      Measured requires a sample note below. Assumed reports are
+                      watermarked DRAFT on export.
                     </span>
                   </label>
+                  {assumptions.realizationMeasured ? (
+                    <label className="field cs-sample-field">
+                      <span className="field-label">Sample methodology</span>
+                      <textarea
+                        className="cs-sample-input"
+                        rows={3}
+                        placeholder="e.g. n=200 Updates rows sampled on Aug 31, 2026 — classified manual UI / bulk import / channel write-back"
+                        value={assumptions.realizationSampleNote}
+                        onChange={(event) =>
+                          setAssumption("realizationSampleNote", event.target.value)
+                        }
+                      />
+                      <span className="field-help">
+                        Required to remove the DRAFT watermark from the PDF.
+                      </span>
+                    </label>
+                  ) : null}
                   <AssumptionField
                     label="Minutes saved per content action"
                     value={assumptions.contentMinutesSaved}
@@ -470,6 +574,16 @@ export default function CustomerSuccessWorkspace() {
             </div>
           ) : (
             <>
+              {isDraftReport && (
+                <div className="cs-draft-banner" role="status">
+                  <strong>DRAFT — assumptions not yet sampled against raw export</strong>
+                  <span>
+                    Do not send this report to a customer&apos;s finance stakeholder until
+                    the realized share is measured and a sample methodology note is attached.
+                  </span>
+                </div>
+              )}
+
               <div className="result-hero">
                 <p>Observed catalog workload run through PXM</p>
                 <strong>{result.fteEquivalent.toFixed(1)} FTE</strong>
@@ -478,6 +592,21 @@ export default function CustomerSuccessWorkspace() {
                   {activity.uniqueUsers} active users · {activity.spanDays} days
                 </span>
               </div>
+
+              {periodTrend && (
+                <div className="cs-trend">
+                  <strong>Workload trend across periods</strong>
+                  <span>
+                    Implied workload: {periodTrend.previous.fteEquivalent.toFixed(1)} FTE →{" "}
+                    {periodTrend.current.fteEquivalent.toFixed(1)} FTE. Observed actions:{" "}
+                    {periodTrend.previous.totalActions.toLocaleString()} →{" "}
+                    {periodTrend.current.totalActions.toLocaleString()}. Active users:{" "}
+                    {periodTrend.previous.uniqueUsers} → {periodTrend.current.uniqueUsers}.
+                    Lead renewal conversations with this trend — it does not depend on
+                    disputed dollar assumptions.
+                  </span>
+                </div>
+              )}
 
               {result.compositionUnverified && (
                 <div className="cs-warning">
@@ -516,7 +645,7 @@ export default function CustomerSuccessWorkspace() {
                     {result.scenarios.map((scenario) => (
                       <tr
                         key={scenario.key}
-                        className={scenario.key === "expected" ? "is-expected" : ""}
+                        className={scenario.key === "conservative" ? "is-primary" : ""}
                       >
                         <td>{scenario.label}</td>
                         <td>
@@ -533,6 +662,33 @@ export default function CustomerSuccessWorkspace() {
                     ))}
                   </tbody>
                 </table>
+                <table className="cs-breakdown cs-scenarios cs-scenario-metrics">
+                  <thead>
+                    <tr>
+                      <th>Scenario</th>
+                      <th>Annualized run-rate</th>
+                      <th>Payback</th>
+                      <th>FTE</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.scenarios.map((scenario) => (
+                      <tr
+                        key={`${scenario.key}-metrics`}
+                        className={scenario.key === "conservative" ? "is-primary" : ""}
+                      >
+                        <td>{scenario.label}</td>
+                        <td>{money(scenario.annualizedValue)}</td>
+                        <td>
+                          {scenario.paybackMonths === null
+                            ? "—"
+                            : `${scenario.paybackMonths.toFixed(1)} mo`}
+                        </td>
+                        <td>{scenario.fteEquivalent.toFixed(1)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
                 <p className="benefit-desc cs-range-note">
                   Lead with the conservative floor. It is the number that survives
                   scrutiny from a finance stakeholder.
@@ -545,36 +701,52 @@ export default function CustomerSuccessWorkspace() {
               >
                 {busy ? "Preparing report…" : "Download CS value report (PDF)"}
               </button>
-              <div className="metric-grid">
-                <div>
-                  <span>Expected-case value</span>
-                  <strong>{money(result.periodValue)}</strong>
-                  <small>
-                    Directional estimate, not a measured result. See the range above.
-                  </small>
-                </div>
+              <div className="metric-grid cs-scenario-summary">
+                {conservative && (
+                  <div className="is-primary-tile">
+                    <span>Conservative value (lead with this)</span>
+                    <strong>{money(conservative.periodValue)}</strong>
+                    <small>
+                      {conservative.periodRoi === null
+                        ? "—"
+                        : `${Math.round(conservative.periodRoi)}% period ROI`}{" "}
+                      · {money(conservative.annualizedValue)} annualized ·{" "}
+                      {conservative.paybackMonths === null
+                        ? "—"
+                        : `${conservative.paybackMonths.toFixed(1)} mo payback`}
+                    </small>
+                  </div>
+                )}
+                {expected && (
+                  <div>
+                    <span>Expected-case value</span>
+                    <strong>{money(expected.periodValue)}</strong>
+                    <small>
+                      {money(expected.annualizedValue)} annualized ·{" "}
+                      {expected.paybackMonths === null
+                        ? "—"
+                        : `${expected.paybackMonths.toFixed(1)} mo payback`}
+                    </small>
+                  </div>
+                )}
+                {upper && (
+                  <div>
+                    <span>Upper-bound value</span>
+                    <strong>{money(upper.periodValue)}</strong>
+                    <small>
+                      {money(upper.annualizedValue)} annualized ·{" "}
+                      {upper.paybackMonths === null
+                        ? "—"
+                        : `${upper.paybackMonths.toFixed(1)} mo payback`}
+                    </small>
+                  </div>
+                )}
                 <div>
                   <span>Period PXM cost</span>
                   <strong>{money(result.periodCost)}</strong>
                   <small>
                     {money(assumptions.annualPxmInvestment)} × {activity.spanDays}/365.
                   </small>
-                </div>
-                <div>
-                  <span>Annualized value run-rate</span>
-                  <strong>{money(result.annualizedValue)}</strong>
-                  <small>
-                    A projection if this period&apos;s activity continued for a year.
-                  </small>
-                </div>
-                <div>
-                  <span>Estimated payback</span>
-                  <strong>
-                    {result.paybackMonths === null
-                      ? "—"
-                      : `${result.paybackMonths.toFixed(1)} mo`}
-                  </strong>
-                  <small>Based on the annualized observed-activity run-rate.</small>
                 </div>
               </div>
 
@@ -640,6 +812,33 @@ export default function CustomerSuccessWorkspace() {
                   actual catalog staffing cost. Run a second period so workload can
                   be shown as a trend rather than a snapshot.
                 </span>
+              </div>
+
+              <div className="benefit-card">
+                <div className="section-title">
+                  <h3>Automation excluded by action type</h3>
+                  <span>checked on every tab</span>
+                </div>
+                <table className="cs-breakdown">
+                  <thead>
+                    <tr>
+                      <th>Action type</th>
+                      <th>Automated excluded</th>
+                      <th>Human counted</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activity.automationByType.map((entry) => (
+                      <tr key={entry.label}>
+                        <td>{entry.label}</td>
+                        <td>{entry.automatedExcluded.toLocaleString()}</td>
+                        <td>{entry.humanCount.toLocaleString()}</td>
+                        <td>{entry.totalCount.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
 
               <div className="benefit-card">

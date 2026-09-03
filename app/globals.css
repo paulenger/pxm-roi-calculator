@@ -224,9 +224,62 @@ h1 { font-size: clamp(38px, 4vw, 64px); letter-spacing: -.045em; line-height: .9
 }
 .cs-warning strong { color: #fcd34d; font-size: 11px; }
 
-.cs-scenarios tr.is-expected td { color: #f7f8fb; background: rgba(116, 38, 255, .1); }
+.cs-scenarios tr.is-primary td { color: #f7f8fb; background: rgba(34, 197, 94, .12); }
 .cs-scenarios td:nth-child(2) { color: #6f7a8d; font-size: 10px; }
+.cs-scenario-metrics { margin-top: 8px; }
 .cs-range-note { padding-left: 0; margin-top: 10px; }
+
+.cs-draft-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px solid rgba(251, 191, 36, .55);
+  background: rgba(251, 191, 36, .1);
+  border-radius: 12px;
+  padding: 14px;
+  color: #e8dcc0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.cs-draft-banner strong { color: #fcd34d; font-size: 11px; }
+
+.cs-trend {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px solid rgba(0, 167, 255, .35);
+  background: rgba(0, 167, 255, .08);
+  border-radius: 12px;
+  padding: 14px;
+  color: #c2cad8;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.cs-trend strong { color: #7dd3fc; font-size: 11px; }
+
+.cs-scenario-summary .is-primary-tile {
+  border-color: rgba(34, 197, 94, .45);
+  background: rgba(34, 197, 94, .08);
+}
+.cs-scenario-summary .is-primary-tile strong { color: #86efac; }
+
+.cs-sample-field { grid-column: 1 / -1; }
+.cs-sample-input {
+  width: 100%;
+  min-height: 72px;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(8, 11, 18, .55);
+  color: #f7f8fb;
+  font: inherit;
+  resize: vertical;
+}
+.cs-sample-input:focus {
+  outline: 0;
+  border-color: var(--cyan);
+}
 
 .cs-measured-field { gap: 6px; }
 .cs-toggle { display: flex; gap: 6px; }

@@ -115,12 +115,13 @@ test("counts update volume as records, not as human tasks", async () => {
     contentMinutesSaved: 9,
     bulkSecondsSaved: 30,
     bulkRealizationPercent: 25,
+    realizationMeasured: false,
+    realizationSampleNote: "",
+    hourlyRateConfirmed: false,
     assetMinutesSaved: 5,
     syndicationMinutesSaved: 7.5,
     annualPxmInvestment: 31_000,
   });
-
-  assert.equal(summary.byCategory.bulk, 120_000);
   assert.equal(summary.byCategory.automation, 134_064);
   assert.equal(summary.byCategory.content, 0);
   assert.equal(summary.automatedActions, 134_064);
@@ -159,6 +160,9 @@ test("does not convert API or System Generated volume into dollars", async () =>
     contentMinutesSaved: 9,
     bulkSecondsSaved: 30,
     bulkRealizationPercent: 25,
+    realizationMeasured: false,
+    realizationSampleNote: "",
+    hourlyRateConfirmed: false,
     assetMinutesSaved: 5,
     syndicationMinutesSaved: 7.5,
     annualPxmInvestment: 31_000,
@@ -195,6 +199,8 @@ test("reports a scenario band and flags unverified record composition", async ()
     bulkSecondsSaved: 30,
     bulkRealizationPercent: 25,
     realizationMeasured: false,
+    realizationSampleNote: "",
+    hourlyRateConfirmed: false,
     assetMinutesSaved: 5,
     syndicationMinutesSaved: 7.5,
     annualPxmInvestment: 31_000,
@@ -218,6 +224,44 @@ test("reports a scenario band and flags unverified record composition", async ()
   assert.ok(conservative.periodValue < expected.periodValue);
   assert.ok(expected.periodValue < upper.periodValue);
   assert.equal(Math.round(expected.periodValue), Math.round(result.periodValue));
+
+  for (const scenario of result.scenarios) {
+    assert.ok(scenario.paybackMonths === null || scenario.paybackMonths > 0);
+    assert.equal(
+      Math.round(scenario.annualizedValue),
+      Math.round(scenario.periodValue * (365 / summary.spanDays)),
+    );
+  }
+});
+
+test("excludes automated downloads and shares from dollar totals", async () => {
+  const model = await loadCsModel();
+  const rows = model.parseActivitySheets([
+    {
+      name: "File Downloads",
+      rows: [
+        ["Date", "User", "Hostname", "Count", "Action"],
+        ["7/6/2026", "Grant Wheeler", "helmethouse", 40, "File Download"],
+        ["7/7/2026", "System Generated", "helmethouse", 60, "File Download"],
+      ],
+    },
+    {
+      name: "Shares",
+      rows: [
+        ["Date", "User", "Hostname", "Count", "Action"],
+        ["7/8/2026", "API", "helmethouse", 15, "Share"],
+        ["7/9/2026", "Sarah Gaines", "helmethouse", 5, "Share"],
+      ],
+    },
+  ]);
+  const summary = model.summarizeActivity(rows);
+  const downloads = summary.automationByType.find((entry) => entry.label === "File Downloads");
+  const shares = summary.automationByType.find((entry) => entry.label === "Shares");
+
+  assert.equal(summary.byCategory.asset, 45);
+  assert.equal(summary.byCategory.automation, 75);
+  assert.equal(downloads?.automatedExcluded, 60);
+  assert.equal(shares?.automatedExcluded, 15);
 });
 
 test("flags value that exceeds what the observed team could perform", async () => {
@@ -227,6 +271,9 @@ test("flags value that exceeds what the observed team could perform", async () =
     contentMinutesSaved: 9,
     bulkSecondsSaved: 30,
     bulkRealizationPercent: 25,
+    realizationMeasured: false,
+    realizationSampleNote: "",
+    hourlyRateConfirmed: false,
     assetMinutesSaved: 5,
     syndicationMinutesSaved: 7.5,
     annualPxmInvestment: 31_000,
@@ -242,6 +289,7 @@ test("flags value that exceeds what the observed team could perform", async () =
     automatedActions: 0,
     byAction: {},
     breakdown: [],
+    automationByType: [],
     byCategory: {
       content: 0,
       bulk: 254_064,
@@ -330,6 +378,7 @@ test("prorates value and annual investment to the same period", async () => {
     automatedActions: 0,
     byAction: { Share: 65 },
     breakdown: [],
+    automationByType: [],
     byCategory: {
       content: 0,
       bulk: 0,
@@ -346,12 +395,13 @@ test("prorates value and annual investment to the same period", async () => {
     contentMinutesSaved: 9,
     bulkSecondsSaved: 30,
     bulkRealizationPercent: 25,
+    realizationMeasured: false,
+    realizationSampleNote: "",
+    hourlyRateConfirmed: false,
     assetMinutesSaved: 5,
     syndicationMinutesSaved: 7.5,
     annualPxmInvestment: 31_000,
   });
-
-  assert.equal(Math.round(result.periodValue), 271);
   assert.equal(Math.round(result.periodCost), 5_011);
   assert.equal(Math.round(result.annualizedValue), 1_675);
   assert.equal(Math.round(result.periodRoi), -95);

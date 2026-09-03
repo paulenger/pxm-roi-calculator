@@ -24,6 +24,15 @@ export type ActionBreakdown = {
   count: number;
   events: number;
   automatedCount: number;
+  humanCount: number;
+};
+
+/** Dollarized activity families with automation excluded per type. */
+export type AutomationExclusionByType = {
+  label: string;
+  totalCount: number;
+  automatedExcluded: number;
+  humanCount: number;
 };
 
 export type CsActivitySummary = {
@@ -38,6 +47,7 @@ export type CsActivitySummary = {
   byAction: Record<string, number>;
   byCategory: Record<CsActivityCategory, number>;
   breakdown: ActionBreakdown[];
+  automationByType: AutomationExclusionByType[];
 };
 
 export type ReportingPeriod = {
@@ -57,6 +67,9 @@ export type CsValueAssumptions = {
    * a measured one do not deserve the same confidence in a renewal conversation.
    */
   realizationMeasured: boolean;
+  /** Required when realizationMeasured is true. */
+  realizationSampleNote: string;
+  hourlyRateConfirmed: boolean;
   assetMinutesSaved: number;
   syndicationMinutesSaved: number;
   annualPxmInvestment: number;
@@ -75,6 +88,7 @@ export type CsScenario = {
   periodValue: number;
   periodRoi: number | null;
   annualizedValue: number;
+  paybackMonths: number | null;
   fteEquivalent: number;
 };
 
@@ -181,14 +195,40 @@ export function classifyAction(action: string, automated = false): CsActivityCat
   return "other";
 }
 
-const AUTOMATION_USERS = new Set(["system generated", "system", "api", "integration"]);
+const AUTOMATION_USERS = new Set([
+  "system generated",
+  "system",
+  "api",
+  "integration",
+  "scheduler",
+  "scheduled report",
+  "automation",
+]);
 
 function isApiAction(value: string): boolean {
   return (
     value.includes("api update") ||
     value.includes("api created") ||
+    value.includes("api pull") ||
     /\bapi\b/.test(value)
   );
+}
+
+/** Maps export action names to the families shown in the breakdown table. */
+function actionFamily(action: string): string {
+  const value = action.trim().toLowerCase();
+  if (value.includes("attribute") || value.includes("update")) return "Updates";
+  if (value.includes("file download")) return "File Downloads";
+  if (value.includes("product download")) return "Product Downloads";
+  if (value.includes("share")) return "Shares";
+  if (value.includes("syndicat") || value.includes("publish to channel")) {
+    return "Syndications";
+  }
+  if (value.includes("import")) return "Imports";
+  if (value.includes("product created")) return "Products Created";
+  if (value.includes("file uploaded") || value.includes("upload")) return "Files Uploaded";
+  if (value.includes("collection") || value.includes("media")) return "Content ops";
+  return "Other";
 }
 
 export function isAutomatedActor(user: string, action = ""): boolean {
@@ -420,6 +460,7 @@ export function summarizeActivity(
   const byAction: Record<string, number> = {};
   const byCategory = { ...EMPTY_CATEGORIES };
   const breakdownByAction = new Map<string, ActionBreakdown>();
+  const automationByFamily = new Map<string, AutomationExclusionByType>();
 
   for (const row of rows) {
     byAction[row.action] = (byAction[row.action] || 0) + row.count;
@@ -427,11 +468,34 @@ export function summarizeActivity(
     const key = `${row.action}::${row.category}`;
     const entry =
       breakdownByAction.get(key) ??
-      { action: row.action, category: row.category, count: 0, events: 0, automatedCount: 0 };
+      {
+        action: row.action,
+        category: row.category,
+        count: 0,
+        events: 0,
+        automatedCount: 0,
+        humanCount: 0,
+      };
     entry.count += row.count;
     entry.events += 1;
-    if (row.automated) entry.automatedCount += row.count;
+    if (row.automated) {
+      entry.automatedCount += row.count;
+    } else {
+      entry.humanCount += row.count;
+    }
     breakdownByAction.set(key, entry);
+
+    const family = actionFamily(row.action);
+    const familyEntry =
+      automationByFamily.get(family) ??
+      { label: family, totalCount: 0, automatedExcluded: 0, humanCount: 0 };
+    familyEntry.totalCount += row.count;
+    if (row.automated) {
+      familyEntry.automatedExcluded += row.count;
+    } else {
+      familyEntry.humanCount += row.count;
+    }
+    automationByFamily.set(family, familyEntry);
   }
 
   const hostnames = [...new Set(rows.map((row) => row.hostname).filter(Boolean))];
@@ -454,6 +518,9 @@ export function summarizeActivity(
     byAction,
     byCategory,
     breakdown: [...breakdownByAction.values()].sort((a, b) => b.count - a.count),
+    automationByType: [...automationByFamily.values()].sort(
+      (a, b) => b.totalCount - a.totalCount,
+    ),
   };
 }
 
@@ -513,6 +580,7 @@ export function calculateCsValue(
       (activity.byCategory.asset * scenarioAssetMinutes) / 60 +
       (activity.byCategory.syndication * scenarioSyndicationMinutes) / 60;
     const scenarioValue = scenarioHours * assumptions.hourlyRate;
+    const scenarioAnnualized = scenarioValue * (365 / activity.spanDays);
 
     return {
       key,
@@ -524,7 +592,11 @@ export function calculateCsValue(
       totalHours: scenarioHours,
       periodValue: scenarioValue,
       periodRoi: periodCost > 0 ? ((scenarioValue - periodCost) / periodCost) * 100 : null,
-      annualizedValue: scenarioValue * (365 / activity.spanDays),
+      annualizedValue: scenarioAnnualized,
+      paybackMonths:
+        scenarioAnnualized > 0
+          ? (assumptions.annualPxmInvestment / scenarioAnnualized) * 12
+          : null,
       fteEquivalent: periodCapacity > 0 ? scenarioHours / periodCapacity : 0,
     };
   });

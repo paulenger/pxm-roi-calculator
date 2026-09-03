@@ -1,4 +1,5 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import type { PeriodTrend } from "./cs-period-history";
 import type {
   CsActivitySummary,
   CsValueAssumptions,
@@ -31,7 +32,34 @@ const styles = StyleSheet.create({
     backgroundColor: "#080b12",
     fontFamily: "Helvetica",
     fontSize: 10,
+    position: "relative",
   },
+  draftWatermark: {
+    position: "absolute",
+    top: 280,
+    left: 40,
+    right: 40,
+    transform: "rotate(-28deg)",
+    fontSize: 34,
+    color: "rgba(251, 191, 36, 0.18)",
+    fontFamily: "Helvetica-Bold",
+    textAlign: "center",
+  },
+  draftBanner: {
+    borderWidth: 1,
+    borderColor: "#fbbf24",
+    backgroundColor: "rgba(251, 191, 36, 0.12)",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+  },
+  draftBannerTitle: {
+    color: "#fcd34d",
+    fontFamily: "Helvetica-Bold",
+    fontSize: 9,
+    marginBottom: 4,
+  },
+  draftBannerText: { color: "#e8dcc0", fontSize: 8, lineHeight: 1.45 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -43,8 +71,23 @@ const styles = StyleSheet.create({
   brand: { fontFamily: "Helvetica-Bold", fontSize: 12, letterSpacing: 1 },
   muted: { color: "#9aa5b8", fontSize: 8 },
   hero: { backgroundColor: "#7426ff", borderRadius: 10, padding: 20, marginBottom: 14 },
+  heroConservative: {
+    backgroundColor: "#121827",
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "#22c55e",
+  },
   eyebrow: {
     color: "#d8c8ff",
+    fontSize: 8,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 5,
+  },
+  eyebrowGreen: {
+    color: "#86efac",
     fontSize: 8,
     textTransform: "uppercase",
     letterSpacing: 1,
@@ -79,7 +122,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#1e2a40",
   },
-  rowLabel: { color: "#c2cad8" },
+  rowLabel: { color: "#c2cad8", flex: 1, paddingRight: 8 },
   rowValue: { fontFamily: "Helvetica-Bold" },
   note: { color: "#6f7a8d", fontSize: 7.5, lineHeight: 1.5, marginTop: 14 },
 });
@@ -88,11 +131,19 @@ export function CsReportPDF({
   activity,
   assumptions,
   result,
+  isDraft = false,
+  periodTrend = null,
 }: {
   activity: CsActivitySummary;
   assumptions: CsValueAssumptions;
   result: CsValueResult;
+  isDraft?: boolean;
+  periodTrend?: PeriodTrend | null;
 }) {
+  const conservative = result.scenarios.find((scenario) => scenario.key === "conservative");
+  const expected = result.scenarios.find((scenario) => scenario.key === "expected");
+  const upper = result.scenarios.find((scenario) => scenario.key === "upper");
+
   const levers: [string, string, number][] = [
     [
       "Human record & attribute edits",
@@ -120,6 +171,10 @@ export function CsReportPDF({
   return (
     <Document title={`${activity.brand} PXM customer value report`} author="Pattern">
       <Page size="A4" style={styles.page}>
+        {isDraft ? (
+          <Text style={styles.draftWatermark}>DRAFT — NOT SAMPLED</Text>
+        ) : null}
+
         <View style={styles.header}>
           <View>
             <Text style={styles.brand}>PATTERN PXM</Text>
@@ -133,6 +188,18 @@ export function CsReportPDF({
           </View>
         </View>
 
+        {isDraft ? (
+          <View style={styles.draftBanner}>
+            <Text style={styles.draftBannerTitle}>
+              DRAFT — assumptions not yet sampled against raw export
+            </Text>
+            <Text style={styles.draftBannerText}>
+              Do not present this report to a customer finance stakeholder until the
+              realized share is measured and a sample methodology note is attached.
+            </Text>
+          </View>
+        ) : null}
+
         <View style={styles.hero}>
           <Text style={styles.eyebrow}>Catalog workload run through PXM</Text>
           <Text style={styles.heroValue}>{result.fteEquivalent.toFixed(1)} FTE</Text>
@@ -142,39 +209,73 @@ export function CsReportPDF({
           </Text>
         </View>
 
-        <View style={styles.grid}>
-          <View style={styles.metric}>
-            <Text style={styles.metricLabel}>Observed actions</Text>
-            <Text style={styles.metricValue}>
-              {activity.totalActions.toLocaleString()}
+        {conservative ? (
+          <View style={styles.heroConservative}>
+            <Text style={styles.eyebrowGreen}>Conservative value — lead with this</Text>
+            <Text style={styles.heroValue}>{money(conservative.periodValue)}</Text>
+            <Text style={styles.heroSub}>
+              {conservative.periodRoi === null
+                ? "—"
+                : `${Math.round(conservative.periodRoi)}% period ROI`}{" "}
+              · {money(conservative.annualizedValue)} annualized ·{" "}
+              {conservative.paybackMonths === null
+                ? "—"
+                : `${conservative.paybackMonths.toFixed(1)} mo payback`}
             </Text>
           </View>
-          <View style={styles.metric}>
-            <Text style={styles.metricLabel}>Active users</Text>
-            <Text style={styles.metricValue}>{activity.uniqueUsers}</Text>
+        ) : null}
+
+        {periodTrend ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Workload trend across periods</Text>
+            <Text style={styles.note}>
+              Implied workload: {periodTrend.previous.fteEquivalent.toFixed(1)} FTE →{" "}
+              {periodTrend.current.fteEquivalent.toFixed(1)} FTE. Observed actions:{" "}
+              {periodTrend.previous.totalActions.toLocaleString()} →{" "}
+              {periodTrend.current.totalActions.toLocaleString()}.
+            </Text>
           </View>
+        ) : null}
+
+        <View style={styles.grid}>
+          {expected ? (
+            <View style={styles.metric}>
+              <Text style={styles.metricLabel}>Expected value</Text>
+              <Text style={styles.metricValue}>{money(expected.periodValue)}</Text>
+            </View>
+          ) : null}
+          {upper ? (
+            <View style={styles.metric}>
+              <Text style={styles.metricLabel}>Upper bound</Text>
+              <Text style={styles.metricValue}>{money(upper.periodValue)}</Text>
+            </View>
+          ) : null}
           <View style={styles.metric}>
             <Text style={styles.metricLabel}>Period PXM cost</Text>
             <Text style={styles.metricValue}>{money(result.periodCost)}</Text>
           </View>
           <View style={styles.metric}>
-            <Text style={styles.metricLabel}>Expected-case value</Text>
-            <Text style={styles.metricValue}>{money(result.periodValue)}</Text>
+            <Text style={styles.metricLabel}>Active users</Text>
+            <Text style={styles.metricValue}>{activity.uniqueUsers}</Text>
           </View>
         </View>
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>
             Estimated value range ·{" "}
-            {assumptions.realizationMeasured
+            {assumptions.realizationMeasured && assumptions.realizationSampleNote.trim()
               ? "measured record share"
               : "assumed record share"}
           </Text>
           {result.scenarios.map((scenario) => (
             <View style={styles.row} key={scenario.key}>
               <Text style={styles.rowLabel}>
-                {scenario.label} · {Math.round(scenario.realizationPercent)}% realized ·{" "}
-                {hours(scenario.secondsPerRecord)}s per record
+                {scenario.label} · {Math.round(scenario.realizationPercent)}% ·{" "}
+                {hours(scenario.secondsPerRecord)}s/record ·{" "}
+                {money(scenario.annualizedValue)} annualized ·{" "}
+                {scenario.paybackMonths === null
+                  ? "—"
+                  : `${scenario.paybackMonths.toFixed(1)} mo payback`}
               </Text>
               <Text style={styles.rowValue}>
                 {money(scenario.periodValue)}
@@ -186,16 +287,26 @@ export function CsReportPDF({
           ))}
         </View>
 
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Automation excluded by action type</Text>
+          {activity.automationByType.map((entry) => (
+            <View style={styles.row} key={entry.label}>
+              <Text style={styles.rowLabel}>{entry.label}</Text>
+              <Text style={styles.rowValue}>
+                {entry.automatedExcluded.toLocaleString()} excluded ·{" "}
+                {entry.humanCount.toLocaleString()} human
+              </Text>
+            </View>
+          ))}
+        </View>
+
         {result.compositionUnverified ? (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Confidence and open questions</Text>
             <Text style={styles.note}>
               Only {result.automationSharePercent.toFixed(2)}% of record volume names an
               API or system actor, so this export does not reliably separate manual
-              edits from bulk imports and channel write-backs. The range above reflects
-              that uncertainty. A sampled audit of the raw Updates rows, plus
-              confirmation of the loaded hourly rate against actual catalog staffing
-              cost, would narrow it.
+              edits from bulk imports and channel write-backs.
             </Text>
           </View>
         ) : null}
@@ -210,38 +321,23 @@ export function CsReportPDF({
               <Text style={styles.rowValue}>{money(value)}</Text>
             </View>
           ))}
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>
-              Implied human workload across {activity.uniqueUsers} active users
-            </Text>
-            <Text style={styles.rowValue}>
-              {result.fteEquivalent.toFixed(1)} FTE
-            </Text>
-          </View>
         </View>
 
-        {activity.byCategory.automation > 0 ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>
-              Attributed to an API or system actor — not dollarized
-            </Text>
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>
-                Records naming an API or system actor
-              </Text>
-              <Text style={styles.rowValue}>
-                {activity.byCategory.automation.toLocaleString()}
-              </Text>
-            </View>
-          </View>
-        ) : null}
-
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Expected-case assumptions</Text>
+          <Text style={styles.cardTitle}>Assumptions</Text>
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Loaded hourly rate</Text>
-            <Text style={styles.rowValue}>{money(assumptions.hourlyRate)}/hr</Text>
+            <Text style={styles.rowValue}>
+              {money(assumptions.hourlyRate)}/hr
+              {assumptions.hourlyRateConfirmed ? " · confirmed" : " · Pattern default"}
+            </Text>
           </View>
+          {!assumptions.hourlyRateConfirmed ? (
+            <Text style={styles.note}>
+              Loaded hourly rate is a Pattern default, not confirmed against{" "}
+              {activity.brand}&apos;s actual staffing cost.
+            </Text>
+          ) : null}
           {activity.byCategory.bulk > 0 ? (
             <>
               <View style={styles.row}>
@@ -249,23 +345,17 @@ export function CsReportPDF({
                 <Text style={styles.rowValue}>{assumptions.bulkSecondsSaved} sec</Text>
               </View>
               <View style={styles.row}>
-                <Text style={styles.rowLabel}>
-                  Share of record volume realized ·{" "}
-                  {assumptions.realizationMeasured
-                    ? "measured from sample"
-                    : "planning assumption"}
-                </Text>
+                <Text style={styles.rowLabel}>Share of record volume realized</Text>
                 <Text style={styles.rowValue}>
                   {assumptions.bulkRealizationPercent}%
                 </Text>
               </View>
+              {assumptions.realizationMeasured && assumptions.realizationSampleNote.trim() ? (
+                <Text style={styles.note}>
+                  Sample methodology: {assumptions.realizationSampleNote}
+                </Text>
+              ) : null}
             </>
-          ) : null}
-          {activity.byCategory.content > 0 ? (
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Minutes saved per content action</Text>
-              <Text style={styles.rowValue}>{assumptions.contentMinutesSaved} min</Text>
-            </View>
           ) : null}
           {activity.byCategory.asset > 0 ? (
             <View style={styles.row}>
@@ -288,13 +378,11 @@ export function CsReportPDF({
         </View>
 
         <Text style={styles.note}>
-          Observed action counts and active users come from the PXM activity export and
-          are measured. Dollar values are directional estimates based on standard
-          time-savings assumptions per activity type; actual savings vary by team
-          workflow. Update activity is counted in records and attributes touched rather
-          than in tasks, so it is valued per record and discounted to the share a team
-          would plausibly have maintained by hand. Period cost is the annual PXM
-          investment prorated to {activity.spanDays} reporting days.
+          Observed action counts and active users are measured. Dollar values are
+          directional estimates based on standard time-savings assumptions. API and
+          system actors are excluded from dollars on every action type where the export
+          labels them. Lead renewal conversations with the conservative scenario and
+          any period-over-period workload trend.
         </Text>
       </Page>
     </Document>
