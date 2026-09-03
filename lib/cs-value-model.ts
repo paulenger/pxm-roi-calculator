@@ -58,6 +58,7 @@ export type ReportingPeriod = {
 export type CsValueAssumptions = {
   hourlyRate: number;
   contentMinutesSaved: number;
+  recordValuationMode: "skeptics-case" | "throughput-only";
   bulkSecondsSaved: number;
   bulkRealizationPercent: number;
   /**
@@ -101,7 +102,7 @@ const SCENARIO_SHAPE: Record<
   CsScenarioKey,
   { label: string; realization: number; recordSeconds: number }
 > = {
-  conservative: { label: "Conservative", realization: 0.4, recordSeconds: 0.5 },
+  conservative: { label: "Conservative", realization: 0.5, recordSeconds: 0.5 },
   expected: { label: "Expected", realization: 1, recordSeconds: 1 },
   upper: { label: "Upper bound", realization: 1.6, recordSeconds: 1.5 },
 };
@@ -137,9 +138,10 @@ export type CsValueResult = {
    */
   compositionUnverified: boolean;
   automationSharePercent: number;
-  /** False when the export cannot separate manual record edits from bulk/API volume. */
+  /** False when the user selects explicit throughput-only mode. */
   recordsDollarized: boolean;
   recordMaintenanceCount: number;
+  scenarioRangeDegenerate: boolean;
 };
 
 const EMPTY_CATEGORIES: Record<CsActivityCategory, number> = {
@@ -538,13 +540,10 @@ export function calculateCsValue(
   const automationSharePercent =
     recordVolume > 0 ? (activity.byCategory.automation / recordVolume) * 100 : 0;
   const compositionUnverified = recordVolume >= 10_000 && automationSharePercent < 1;
-  // When the export labels almost no automation, record volume is throughput
-  // evidence only — not labor dollars — until a documented sample audit
-  // supplies a measured manual/bulk/automated share.
-  const measuredComposition =
-    assumptions.realizationMeasured &&
-    assumptions.realizationSampleNote.trim().length > 0;
-  const recordsDollarized = !compositionUnverified || measuredComposition;
+  // Skeptic's-case mode permits an explicitly assumed, DRAFT-watermarked
+  // non-zero floor. Throughput-only mode makes no record-dollar claim.
+  const recordsDollarized =
+    (assumptions.recordValuationMode ?? "skeptics-case") === "skeptics-case";
 
   const contentHours =
     (activity.byCategory.content * assumptions.contentMinutesSaved) / 60;
@@ -623,6 +622,11 @@ export function calculateCsValue(
       fteEquivalent: periodCapacity > 0 ? scenarioHours / periodCapacity : 0,
     };
   });
+  const scenarioValues = scenarios.map((scenario) => scenario.periodValue);
+  const scenarioMax = Math.max(...scenarioValues);
+  const scenarioMin = Math.min(...scenarioValues);
+  const scenarioRangeDegenerate =
+    scenarioMax === 0 || (scenarioMax - scenarioMin) / scenarioMax <= 0.005;
 
   return {
     contentHours,
@@ -651,5 +655,6 @@ export function calculateCsValue(
     automationSharePercent,
     recordsDollarized,
     recordMaintenanceCount: activity.byCategory.bulk,
+    scenarioRangeDegenerate,
   };
 }

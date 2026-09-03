@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { pdf } from "@react-pdf/renderer";
 import { CsReportPDF } from "@/lib/cs-report-pdf";
 import {
+  buildPeriodTrend,
   periodsForBrand,
   savePeriodSnapshot,
   type PeriodTrend,
@@ -21,6 +22,7 @@ import { readActivityFile } from "@/lib/read-activity-file";
 const DEFAULT_ASSUMPTIONS: CsValueAssumptions = {
   hourlyRate: 50,
   contentMinutesSaved: 9,
+  recordValuationMode: "skeptics-case",
   bulkSecondsSaved: 15,
   bulkRealizationPercent: 10,
   realizationMeasured: false,
@@ -51,6 +53,9 @@ const money = (value: number) =>
 
 const number = (value: number) =>
   new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(value);
+
+const signedPercent = (value: number | null) =>
+  value === null ? "—" : `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
 
 const date = (value: Date) =>
   value.toLocaleDateString("en-US", {
@@ -144,6 +149,12 @@ export default function CustomerSuccessWorkspace() {
   const upper = result?.scenarios.find((scenario) => scenario.key === "upper");
   const isDraftReport =
     !assumptions.realizationMeasured || !assumptions.realizationSampleNote.trim();
+  const conservativeRoiIsNegative =
+    conservative?.periodRoi !== null &&
+    conservative?.periodRoi !== undefined &&
+    conservative.periodRoi < 0;
+  const exportBlocked =
+    conservativeRoiIsNegative || Boolean(result?.scenarioRangeDegenerate);
 
   const periodTrend = useMemo((): PeriodTrend | null => {
     if (!reportActivity || !result || !conservative || !expected) return null;
@@ -165,13 +176,7 @@ export default function CustomerSuccessWorkspace() {
     );
     if (!prior.length) return null;
     const previous = prior[prior.length - 1];
-    return {
-      previous,
-      current,
-      fteDelta: current.fteEquivalent - previous.fteEquivalent,
-      actionsDelta: current.totalActions - previous.totalActions,
-      usersDelta: current.uniqueUsers - previous.uniqueUsers,
-    };
+    return buildPeriodTrend(previous, current);
   }, [reportActivity, result, conservative, expected]);
 
   useEffect(() => {
@@ -230,7 +235,7 @@ export default function CustomerSuccessWorkspace() {
   };
 
   const downloadPdf = async () => {
-    if (!reportActivity || !result) return;
+    if (!reportActivity || !result || exportBlocked) return;
     setBusy(true);
     try {
       const blob = await pdf(
@@ -258,7 +263,9 @@ export default function CustomerSuccessWorkspace() {
   const valueRows = activity && result
     ? [
         {
-          name: "Human record & attribute edits",
+          name: assumptions.realizationMeasured
+            ? "Measured record & attribute maintenance"
+            : "Record maintenance (assumed share)",
           count: activity.byCategory.bulk,
           minutes: assumptions.bulkSecondsSaved / 60,
           hours: result.bulkHours,
@@ -449,6 +456,41 @@ export default function CustomerSuccessWorkspace() {
                       Unconfirmed rates are flagged on the exported report.
                     </span>
                   </label>
+                  <label className="field cs-measured-field">
+                    <span className="field-label">Record valuation mode</span>
+                    <span className="cs-toggle">
+                      <button
+                        type="button"
+                        className={
+                          assumptions.recordValuationMode === "skeptics-case"
+                            ? "is-on"
+                            : ""
+                        }
+                        onClick={() =>
+                          setAssumption("recordValuationMode", "skeptics-case")
+                        }
+                      >
+                        Skeptic&apos;s case
+                      </button>
+                      <button
+                        type="button"
+                        className={
+                          assumptions.recordValuationMode === "throughput-only"
+                            ? "is-on"
+                            : ""
+                        }
+                        onClick={() =>
+                          setAssumption("recordValuationMode", "throughput-only")
+                        }
+                      >
+                        Throughput only
+                      </button>
+                    </span>
+                    <span className="field-help">
+                      Skeptic&apos;s case assumes a small share reflects manual
+                      effort. Throughput only makes no record-dollar claim.
+                    </span>
+                  </label>
                   <AssumptionField
                     label="Seconds saved per record touched"
                     value={assumptions.bulkSecondsSaved}
@@ -601,33 +643,43 @@ export default function CustomerSuccessWorkspace() {
 
               {periodTrend && (
                 <div className="cs-trend">
-                  <strong>Observed activity trend across periods</strong>
+                  <strong>Normalized activity trend across periods</strong>
                   <span>
-                    Observed actions:{" "}
-                    {periodTrend.previous.totalActions.toLocaleString()} →{" "}
-                    {periodTrend.current.totalActions.toLocaleString()}. Active users:{" "}
-                    {periodTrend.previous.uniqueUsers} → {periodTrend.current.uniqueUsers}.{" "}
-                    Modeled dollarized workload:{" "}
-                    {periodTrend.previous.fteEquivalent.toFixed(1)} FTE →{" "}
-                    {periodTrend.current.fteEquivalent.toFixed(1)} FTE. Lead with the
-                    observed trend; it does not depend on disputed time assumptions.
+                    Actions/day: {number(periodTrend.previousActionsPerDay)} →{" "}
+                    {number(periodTrend.currentActionsPerDay)} (
+                    {signedPercent(periodTrend.actionsPerDayChangePercent)}).
+                    Actions/active-user/day:{" "}
+                    {number(periodTrend.previousActionsPerUserPerDay)} →{" "}
+                    {number(periodTrend.currentActionsPerUserPerDay)} (
+                    {signedPercent(periodTrend.actionsPerUserPerDayChangePercent)}).
                   </span>
+                  {periodTrend.periodsDifferMaterially && (
+                    <em>
+                      Periods are of different lengths (
+                      {periodTrend.previous.spanDays} vs.{" "}
+                      {periodTrend.current.spanDays} days); comparison uses daily
+                      rates.
+                    </em>
+                  )}
                 </div>
               )}
 
-              {result.compositionUnverified && !result.recordsDollarized && (
+              {result.compositionUnverified && (
                 <div className="cs-warning">
-                  <strong>Record volume is not dollarized on this report</strong>
+                  <strong>
+                    {result.recordsDollarized
+                      ? "Record composition is unverified — skeptic's-case assumption applied"
+                      : "Record volume is not dollarized on this report"}
+                  </strong>
                   <span>
                     Only {result.automationSharePercent.toFixed(2)}% of{" "}
                     {(
                       activity.byCategory.bulk + activity.byCategory.automation
                     ).toLocaleString()}{" "}
-                    records name an API or system actor. Dollar values below include
-                    only human-task categories (downloads, shares, syndications).
-                    {result.recordMaintenanceCount.toLocaleString()} record-maintenance
-                    events are shown as adoption throughput until a sampled audit
-                    classifies manual edits vs bulk imports and channel write-backs.
+                    records name an API or system actor.{" "}
+                    {result.recordsDollarized
+                      ? "The scenarios apply an explicitly assumed 5% / 10% / 16% record share. This is not a measured result."
+                      : `Dollar values include only human-task categories. ${result.recordMaintenanceCount.toLocaleString()} record-maintenance events remain throughput evidence.`}
                   </span>
                 </div>
               )}
@@ -698,22 +750,52 @@ export default function CustomerSuccessWorkspace() {
                   </tbody>
                 </table>
                 <p className="benefit-desc cs-range-note">
-                  {result.recordsDollarized
-                    ? "Lead with the conservative floor. It is the number that survives scrutiny from a finance stakeholder."
+                  {conservativeRoiIsNegative
+                    ? "The conservative case is negative. Keep this report internal and review the assumptions; do not tune inputs merely to force positive ROI."
+                    : result.recordsDollarized
+                      ? "Lead with the conservative floor. It is the number that survives scrutiny from a finance stakeholder."
                     : "Record volume is excluded from all scenarios. Asset and syndication inputs are fixed, so all three cases correctly converge to the same value."}
                 </p>
               </div>
+              {result.scenarioRangeDegenerate && (
+                <div className="cs-warning">
+                  <strong>Scenario range is degenerate — check inputs</strong>
+                  <span>
+                    Scenario values differ by no more than 0.5%. Export is blocked
+                    until the range has meaningful separation.
+                  </span>
+                </div>
+              )}
+              {conservativeRoiIsNegative && (
+                <div className="cs-warning">
+                  <strong>
+                    Conservative scenario shows negative ROI — do not export
+                  </strong>
+                  <span>
+                    Review source classification and assumptions. Do not increase
+                    inputs merely to force a positive result.
+                  </span>
+                </div>
+              )}
               <button
                 className="download-btn"
                 onClick={() => void downloadPdf()}
-                disabled={busy}
+                disabled={busy || exportBlocked}
               >
-                {busy ? "Preparing report…" : "Download CS value report (PDF)"}
+                {busy
+                  ? "Preparing report…"
+                  : exportBlocked
+                    ? "PDF export blocked — review warnings"
+                    : "Download CS value report (PDF)"}
               </button>
               <div className="metric-grid cs-scenario-summary">
                 {conservative && (
                   <div className="is-primary-tile">
-                    <span>Conservative value (lead with this)</span>
+                    <span>
+                      {conservativeRoiIsNegative
+                        ? "Conservative value (internal review)"
+                        : "Conservative value (lead with this)"}
+                    </span>
                     <strong>{money(conservative.periodValue)}</strong>
                     <small>
                       {conservative.periodRoi === null

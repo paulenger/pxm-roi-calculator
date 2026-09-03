@@ -30,6 +30,60 @@ async function loadCsModel() {
   return commonJsModule.exports;
 }
 
+async function loadPeriodHistory() {
+  const source = await readFile(
+    new URL("../lib/cs-period-history.ts", import.meta.url),
+    "utf8",
+  );
+  const compiled = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2022,
+    },
+  }).outputText;
+  const commonJsModule = { exports: {} };
+  vm.runInNewContext(compiled, {
+    module: commonJsModule,
+    exports: commonJsModule.exports,
+    Date,
+    Math,
+  });
+  return commonJsModule.exports;
+}
+
+test("normalizes trends across periods of different lengths", async () => {
+  const history = await loadPeriodHistory();
+  const previous = {
+    brand: "Helmet House",
+    periodStart: "2026-07-04T00:00:00.000Z",
+    periodEnd: "2026-08-31T00:00:00.000Z",
+    spanDays: 59,
+    fteEquivalent: 0.3,
+    totalActions: 282_209,
+    uniqueUsers: 48,
+    conservativeValue: 4_963,
+    expectedValue: 4_963,
+    savedAt: "2026-09-01T00:00:00.000Z",
+  };
+  const current = {
+    ...previous,
+    periodStart: "2025-09-03T00:00:00.000Z",
+    periodEnd: "2026-09-01T00:00:00.000Z",
+    spanDays: 364,
+    totalActions: 945_453,
+    uniqueUsers: 104,
+  };
+  const trend = history.buildPeriodTrend(previous, current);
+
+  assert.equal(Math.round(trend.previousActionsPerDay), 4_783);
+  assert.equal(Math.round(trend.currentActionsPerDay), 2_597);
+  assert.equal(trend.actionsPerDayChangePercent.toFixed(1), "-45.7");
+  assert.equal(trend.previousActionsPerUserPerDay.toFixed(1), "99.7");
+  assert.equal(trend.currentActionsPerUserPerDay.toFixed(1), "25.0");
+  assert.equal(trend.actionsPerUserPerDayChangePercent.toFixed(1), "-74.9");
+  assert.equal(trend.periodsDifferMaterially, true);
+});
+
 test("parses counts and uses the export filename reporting window", async () => {
   const model = await loadCsModel();
   const csv = [
@@ -113,8 +167,9 @@ test("counts update volume as records, not as human tasks", async () => {
   const result = model.calculateCsValue(summary, {
     hourlyRate: 50,
     contentMinutesSaved: 9,
-    bulkSecondsSaved: 30,
-    bulkRealizationPercent: 25,
+    recordValuationMode: "skeptics-case",
+    bulkSecondsSaved: 15,
+    bulkRealizationPercent: 10,
     realizationMeasured: false,
     realizationSampleNote: "",
     hourlyRateConfirmed: false,
@@ -128,8 +183,8 @@ test("counts update volume as records, not as human tasks", async () => {
 
   // API volume must not enter the dollar total. Only the 120,000 human records do.
   assert.equal(result.recordsDollarized, true);
-  assert.equal(Math.round(result.periodValue), 12_500);
-  assert.ok(result.bulkHours < 300, `bulk hours were ${result.bulkHours}`);
+  assert.equal(Math.round(result.periodValue), 2_500);
+  assert.ok(result.bulkHours < 60, `bulk hours were ${result.bulkHours}`);
 });
 
 test("does not convert API or System Generated volume into dollars", async () => {
@@ -159,8 +214,9 @@ test("does not convert API or System Generated volume into dollars", async () =>
   const result = model.calculateCsValue(summary, {
     hourlyRate: 50,
     contentMinutesSaved: 9,
-    bulkSecondsSaved: 30,
-    bulkRealizationPercent: 25,
+    recordValuationMode: "skeptics-case",
+    bulkSecondsSaved: 15,
+    bulkRealizationPercent: 10,
     realizationMeasured: false,
     realizationSampleNote: "",
     hourlyRateConfirmed: false,
@@ -173,7 +229,7 @@ test("does not convert API or System Generated volume into dollars", async () =>
   assert.equal(summary.byCategory.automation, 140_000);
   assert.equal(summary.byCategory.asset, 10);
 
-  const humanRecordValue = 80 * 0.25 * (30 / 3600) * 50;
+  const humanRecordValue = 80 * 0.1 * (15 / 3600) * 50;
   const assetValue = 10 * (5 / 60) * 50;
   assert.equal(Math.round(result.periodValue), Math.round(humanRecordValue + assetValue));
   assert.ok(result.periodValue < 100);
@@ -197,8 +253,9 @@ test("reports a scenario band and flags unverified record composition", async ()
   const result = model.calculateCsValue(summary, {
     hourlyRate: 50,
     contentMinutesSaved: 9,
-    bulkSecondsSaved: 30,
-    bulkRealizationPercent: 25,
+    recordValuationMode: "skeptics-case",
+    bulkSecondsSaved: 15,
+    bulkRealizationPercent: 10,
     realizationMeasured: false,
     realizationSampleNote: "",
     hourlyRateConfirmed: false,
@@ -207,18 +264,21 @@ test("reports a scenario band and flags unverified record composition", async ()
     annualPxmInvestment: 31_000,
   });
 
-  // An export that labels almost no automation cannot support record dollarization.
+  // The default skeptic's case makes a small, explicit record-value assumption.
   assert.equal(result.compositionUnverified, true);
-  assert.equal(result.recordsDollarized, false);
+  assert.equal(result.recordsDollarized, true);
 
   const [conservative, expected, upper] = result.scenarios;
   assert.equal(conservative.label, "Conservative");
   assert.equal(expected.label, "Expected");
   assert.equal(upper.label, "Upper bound");
 
-  assert.equal(conservative.periodValue, 0);
-  assert.equal(expected.periodValue, 0);
-  assert.equal(upper.periodValue, 0);
+  assert.equal(Math.round(conservative.realizationPercent), 5);
+  assert.equal(Math.round(expected.realizationPercent), 10);
+  assert.equal(Math.round(upper.realizationPercent), 16);
+  assert.ok(conservative.periodValue < expected.periodValue);
+  assert.ok(expected.periodValue < upper.periodValue);
+  assert.equal(result.scenarioRangeDegenerate, false);
 });
 
 test("dollarizes only human-task categories when record composition is unverified", async () => {
@@ -253,6 +313,7 @@ test("dollarizes only human-task categories when record composition is unverifie
   const result = model.calculateCsValue(summary, {
     hourlyRate: 50,
     contentMinutesSaved: 9,
+    recordValuationMode: "throughput-only",
     bulkSecondsSaved: 15,
     bulkRealizationPercent: 10,
     realizationMeasured: false,
@@ -271,6 +332,7 @@ test("dollarizes only human-task categories when record composition is unverifie
   assert.ok(result.scenarios[0].periodValue < result.periodCost);
   assert.equal(result.scenarios[0].periodValue, result.scenarios[1].periodValue);
   assert.equal(result.scenarios[1].periodValue, result.scenarios[2].periodValue);
+  assert.equal(result.scenarioRangeDegenerate, true);
   assert.equal(
     result.scenarios[0].paybackMonths,
     result.scenarios[2].paybackMonths,
@@ -295,6 +357,7 @@ test("a documented measured sample can unlock record valuation", async () => {
   const result = model.calculateCsValue(summary, {
     hourlyRate: 50,
     contentMinutesSaved: 9,
+    recordValuationMode: "skeptics-case",
     bulkSecondsSaved: 15,
     bulkRealizationPercent: 10,
     realizationMeasured: true,
@@ -500,4 +563,22 @@ test("keeps Sales as the default and preserves its annual formulas", async () =>
     /const threeYear =\s*[\r\n]+\s*gross \* 3 - inputs\.annualPXM \* 3 - inputs\.implementation/,
   );
   assert.match(page, /workspace === "customer-success"/);
+});
+
+test("hard-gates PDF export for negative ROI or a degenerate range", async () => {
+  const workspace = await readFile(
+    new URL("../app/customer-success-workspace.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    workspace,
+    /conservativeRoiIsNegative \|\| Boolean\(result\?\.scenarioRangeDegenerate\)/,
+  );
+  assert.match(workspace, /PDF export blocked — review warnings/);
+  assert.match(
+    workspace,
+    /Conservative scenario shows negative ROI — do not export/,
+  );
+  assert.match(workspace, /Scenario range is degenerate — check inputs/);
 });

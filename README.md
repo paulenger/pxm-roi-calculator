@@ -49,10 +49,10 @@ from hours and dollars.
 
 That detection is only as good as the export. Helmet House's workbook labeled
 0.07% of 254,064 records as automated, which almost certainly understates real
-automation rather than proving the rest was manual. When record volume is large
-and labeled automation is under 1%, record-maintenance events remain measured
-throughput evidence but are excluded from hours and dollars. A documented
-sample audit unlocks record valuation.
+automation rather than proving the rest was manual. The default **Skeptic's
+case** therefore uses a small, explicitly assumed record share; **Throughput
+only** remains available when no record-dollar claim is appropriate. Assumed
+reports remain DRAFT-watermarked until a documented sample audit is attached.
 
 ### Presenting the number
 
@@ -72,7 +72,8 @@ Scenario multipliers apply only to the disputed record realization and
 seconds-per-record assumptions. Asset, content, and syndication times remain
 fixed across scenarios. When record volume is excluded, all three scenarios
 therefore converge to the same dollar value instead of incorrectly multiplying
-unrelated categories by 0.5x and 1.5x.
+unrelated categories by 0.5x and 1.5x. A degenerate range blocks PDF export so
+the user must either select Skeptic's case or review the inputs.
 
 The realized share can be marked **measured** once a CSM samples the raw Updates
 rows and classifies them as manual UI edits, bulk imports, or channel
@@ -86,8 +87,13 @@ primary tile. API and system actors are excluded from dollars on every action
 type where the export labels them, with per-type counts shown even when zero.
 
 When two or more periods exist for the same brand, observed action and active
-user trends are shown as the primary renewal talking point. Modeled FTE appears
-separately.
+user trends are normalized as actions/day and actions/active-user/day. Raw
+totals are never compared across unequal windows; periods differing by more
+than 10% display an explicit daily-rate note. Modeled FTE appears separately.
+
+PDF export is also hard-blocked when Conservative ROI is negative. Inputs must
+be reviewed, but should never be increased merely to manufacture a positive
+renewal story.
 
 The report also shows the implied full-time-equivalent workload next to the
 active user count. If the estimate claims more avoided work than the observed

@@ -18,6 +18,9 @@ const hours = (value: number) =>
     Number.isFinite(value) ? value : 0,
   );
 
+const signedPercent = (value: number | null) =>
+  value === null ? "—" : `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
+
 const date = (value: Date) =>
   value.toLocaleDateString("en-US", {
     month: "short",
@@ -148,8 +151,10 @@ export function CsReportPDF({
     ...(result.recordsDollarized
       ? [
           [
-            "Human record & attribute edits",
-            `${activity.byCategory.bulk.toLocaleString()} human-driven records · ${assumptions.bulkRealizationPercent}% realized`,
+            assumptions.realizationMeasured
+              ? "Measured record & attribute maintenance"
+              : "Record maintenance (assumed share)",
+            `${activity.byCategory.bulk.toLocaleString()} records · ${assumptions.bulkRealizationPercent}% assumed realized`,
             result.bulkValue,
           ] as [string, string, number],
         ]
@@ -234,16 +239,22 @@ export function CsReportPDF({
 
         {periodTrend ? (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Observed activity trend across periods</Text>
+            <Text style={styles.cardTitle}>Normalized activity trend across periods</Text>
             <Text style={styles.note}>
-              Observed actions:{" "}
-              {periodTrend.previous.totalActions.toLocaleString()} →{" "}
-              {periodTrend.current.totalActions.toLocaleString()}. Active users:{" "}
-              {periodTrend.previous.uniqueUsers} → {periodTrend.current.uniqueUsers}.
-              Modeled dollarized workload:{" "}
-              {periodTrend.previous.fteEquivalent.toFixed(1)} FTE →{" "}
-              {periodTrend.current.fteEquivalent.toFixed(1)} FTE.
+              Actions/day: {hours(periodTrend.previousActionsPerDay)} →{" "}
+              {hours(periodTrend.currentActionsPerDay)} (
+              {signedPercent(periodTrend.actionsPerDayChangePercent)}).
+              Actions/active-user/day:{" "}
+              {hours(periodTrend.previousActionsPerUserPerDay)} →{" "}
+              {hours(periodTrend.currentActionsPerUserPerDay)} (
+              {signedPercent(periodTrend.actionsPerUserPerDayChangePercent)}).
             </Text>
+            {periodTrend.periodsDifferMaterially ? (
+              <Text style={styles.note}>
+                Periods are of different lengths ({periodTrend.previous.spanDays} vs.{" "}
+                {periodTrend.current.spanDays} days); comparison uses daily rates.
+              </Text>
+            ) : null}
           </View>
         ) : null}
 
@@ -315,15 +326,19 @@ export function CsReportPDF({
           ))}
         </View>
 
-        {result.compositionUnverified && !result.recordsDollarized ? (
+        {result.compositionUnverified ? (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Record volume excluded from dollars</Text>
+            <Text style={styles.cardTitle}>
+              {result.recordsDollarized
+                ? "Unverified composition — skeptic's-case assumption applied"
+                : "Record volume excluded from dollars"}
+            </Text>
             <Text style={styles.note}>
               Only {result.automationSharePercent.toFixed(2)}% of record volume names an
-              API or system actor. {result.recordMaintenanceCount.toLocaleString()}{" "}
-              record-maintenance events are shown as throughput only. Dollar values
-              include human-task categories (downloads, shares, syndications) until a
-              sampled audit allows record volume to be valued.
+              API or system actor.{" "}
+              {result.recordsDollarized
+                ? "The scenarios use an assumed 5% / 10% / 16% record share; this is not measured."
+                : `${result.recordMaintenanceCount.toLocaleString()} record-maintenance events are shown as throughput only.`}
             </Text>
           </View>
         ) : null}

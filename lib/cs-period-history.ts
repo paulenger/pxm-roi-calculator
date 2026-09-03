@@ -58,10 +58,51 @@ export function periodsForBrand(brand: string): StoredPeriodSnapshot[] {
 export type PeriodTrend = {
   previous: StoredPeriodSnapshot;
   current: StoredPeriodSnapshot;
-  fteDelta: number;
-  actionsDelta: number;
-  usersDelta: number;
+  previousActionsPerDay: number;
+  currentActionsPerDay: number;
+  actionsPerDayChangePercent: number | null;
+  previousActionsPerUserPerDay: number;
+  currentActionsPerUserPerDay: number;
+  actionsPerUserPerDayChangePercent: number | null;
+  periodsDifferMaterially: boolean;
 };
+
+function percentChange(previous: number, current: number): number | null {
+  return previous > 0 ? ((current - previous) / previous) * 100 : null;
+}
+
+export function buildPeriodTrend(
+  previous: StoredPeriodSnapshot,
+  current: StoredPeriodSnapshot,
+): PeriodTrend {
+  const previousActionsPerDay = previous.totalActions / previous.spanDays;
+  const currentActionsPerDay = current.totalActions / current.spanDays;
+  const previousActionsPerUserPerDay =
+    previous.uniqueUsers > 0
+      ? previousActionsPerDay / previous.uniqueUsers
+      : 0;
+  const currentActionsPerUserPerDay =
+    current.uniqueUsers > 0 ? currentActionsPerDay / current.uniqueUsers : 0;
+
+  return {
+    previous,
+    current,
+    previousActionsPerDay,
+    currentActionsPerDay,
+    actionsPerDayChangePercent: percentChange(
+      previousActionsPerDay,
+      currentActionsPerDay,
+    ),
+    previousActionsPerUserPerDay,
+    currentActionsPerUserPerDay,
+    actionsPerUserPerDayChangePercent: percentChange(
+      previousActionsPerUserPerDay,
+      currentActionsPerUserPerDay,
+    ),
+    periodsDifferMaterially:
+      Math.abs(current.spanDays - previous.spanDays) / previous.spanDays > 0.1,
+  };
+}
 
 export function trendForPeriod(
   brand: string,
@@ -85,11 +126,5 @@ export function trendForPeriod(
 
   if (!current || !previous || previous === current) return null;
 
-  return {
-    previous,
-    current,
-    fteDelta: current.fteEquivalent - previous.fteEquivalent,
-    actionsDelta: current.totalActions - previous.totalActions,
-    usersDelta: current.uniqueUsers - previous.uniqueUsers,
-  };
+  return buildPeriodTrend(previous, current);
 }
