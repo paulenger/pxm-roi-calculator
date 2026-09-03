@@ -145,11 +145,15 @@ export function CsReportPDF({
   const upper = result.scenarios.find((scenario) => scenario.key === "upper");
 
   const levers: [string, string, number][] = [
-    [
-      "Human record & attribute edits",
-      `${activity.byCategory.bulk.toLocaleString()} human-driven records · ${assumptions.bulkRealizationPercent}% realized`,
-      result.bulkValue,
-    ],
+    ...(result.recordsDollarized
+      ? [
+          [
+            "Human record & attribute edits",
+            `${activity.byCategory.bulk.toLocaleString()} human-driven records · ${assumptions.bulkRealizationPercent}% realized`,
+            result.bulkValue,
+          ] as [string, string, number],
+        ]
+      : []),
     [
       "Content operations",
       `${activity.byCategory.content.toLocaleString()} observed actions`,
@@ -302,11 +306,13 @@ export function CsReportPDF({
 
         {result.compositionUnverified ? (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Confidence and open questions</Text>
+            <Text style={styles.cardTitle}>Record volume excluded from dollars</Text>
             <Text style={styles.note}>
               Only {result.automationSharePercent.toFixed(2)}% of record volume names an
-              API or system actor, so this export does not reliably separate manual
-              edits from bulk imports and channel write-backs.
+              API or system actor. {result.recordMaintenanceCount.toLocaleString()}{" "}
+              record-maintenance events are shown as throughput only. Dollar values
+              include human-task categories (downloads, shares, syndications) until a
+              sampled audit allows record volume to be valued.
             </Text>
           </View>
         ) : null}

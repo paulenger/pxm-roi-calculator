@@ -21,8 +21,8 @@ import { readActivityFile } from "@/lib/read-activity-file";
 const DEFAULT_ASSUMPTIONS: CsValueAssumptions = {
   hourlyRate: 50,
   contentMinutesSaved: 9,
-  bulkSecondsSaved: 30,
-  bulkRealizationPercent: 25,
+  bulkSecondsSaved: 15,
+  bulkRealizationPercent: 10,
   realizationMeasured: false,
   realizationSampleNote: "",
   hourlyRateConfirmed: false,
@@ -264,7 +264,10 @@ export default function CustomerSuccessWorkspace() {
           hours: result.bulkHours,
           value: result.bulkValue,
           color: "#7426ff",
-          detail: `${activity.byCategory.bulk.toLocaleString()} records not attributed to an API or system actor × ${assumptions.bulkRealizationPercent}% realized × ${assumptions.bulkSecondsSaved}s = ${number(result.bulkHours)} hours`,
+          detail: result.recordsDollarized
+            ? `${activity.byCategory.bulk.toLocaleString()} records × ${assumptions.bulkRealizationPercent}% realized × ${assumptions.bulkSecondsSaved}s = ${number(result.bulkHours)} hours`
+            : `${activity.byCategory.bulk.toLocaleString()} records maintained — throughput only until composition is verified`,
+          skip: !result.recordsDollarized && activity.byCategory.bulk > 0,
         },
         {
           name: "Content operations",
@@ -290,7 +293,7 @@ export default function CustomerSuccessWorkspace() {
           value: result.syndicationValue,
           color: "#ec4899",
         },
-      ].filter((item) => item.count > 0)
+      ].filter((item) => item.count > 0 && !("skip" in item && item.skip))
     : [];
 
   return (
@@ -585,11 +588,18 @@ export default function CustomerSuccessWorkspace() {
               )}
 
               <div className="result-hero">
-                <p>Observed catalog workload run through PXM</p>
+                <p>
+                  {result.recordsDollarized
+                    ? "Observed catalog workload run through PXM"
+                    : "Observed human-task workload (records excluded from dollars)"}
+                </p>
                 <strong>{result.fteEquivalent.toFixed(1)} FTE</strong>
                 <span>
                   {activity.totalActions.toLocaleString()} observed actions across{" "}
                   {activity.uniqueUsers} active users · {activity.spanDays} days
+                  {!result.recordsDollarized && result.recordMaintenanceCount > 0
+                    ? ` · ${result.recordMaintenanceCount.toLocaleString()} record-maintenance events shown as throughput, not labor`
+                    : ""}
                 </span>
               </div>
 
@@ -610,17 +620,17 @@ export default function CustomerSuccessWorkspace() {
 
               {result.compositionUnverified && (
                 <div className="cs-warning">
-                  <strong>Record composition is unverified</strong>
+                  <strong>Record volume is not dollarized on this report</strong>
                   <span>
                     Only {result.automationSharePercent.toFixed(2)}% of{" "}
                     {(
                       activity.byCategory.bulk + activity.byCategory.automation
                     ).toLocaleString()}{" "}
-                    records name an API or system actor. This export does not
-                    reliably label automation, so we cannot claim automated volume
-                    was removed. Treat the dollar figures as a range until a sampled
-                    audit classifies manual edits against bulk imports and channel
-                    write-backs.
+                    records name an API or system actor. Dollar values below include
+                    only human-task categories (downloads, shares, syndications).
+                    {result.recordMaintenanceCount.toLocaleString()} record-maintenance
+                    events are shown as adoption throughput until a sampled audit
+                    classifies manual edits vs bulk imports and channel write-backs.
                   </span>
                 </div>
               )}
@@ -690,8 +700,9 @@ export default function CustomerSuccessWorkspace() {
                   </tbody>
                 </table>
                 <p className="benefit-desc cs-range-note">
-                  Lead with the conservative floor. It is the number that survives
-                  scrutiny from a finance stakeholder.
+                  {result.recordsDollarized
+                    ? "Lead with the conservative floor. It is the number that survives scrutiny from a finance stakeholder."
+                    : "Record volume is excluded from all scenarios. These dollars reflect only downloads, shares, and syndications — the categories a finance stakeholder can defend without a sampled audit."}
                 </p>
               </div>
               <button
@@ -790,6 +801,19 @@ export default function CustomerSuccessWorkspace() {
                   ))}
                 </div>
               </div>
+
+              {!result.recordsDollarized && result.recordMaintenanceCount > 0 && (
+                <div className="cs-throughput">
+                  <strong>Record maintenance throughput — not dollarized</strong>
+                  <span>
+                    {result.recordMaintenanceCount.toLocaleString()} attribute and
+                    update events processed through PXM. This is evidence of catalog
+                    scale and active use. It is excluded from dollar totals because
+                    this export does not reliably label which events were manual,
+                    bulk, or API-driven.
+                  </span>
+                </div>
+              )}
 
               {activity.byCategory.automation > 0 && (
                 <div className="cs-throughput">

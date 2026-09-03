@@ -127,6 +127,7 @@ test("counts update volume as records, not as human tasks", async () => {
   assert.equal(summary.automatedActions, 134_064);
 
   // API volume must not enter the dollar total. Only the 120,000 human records do.
+  assert.equal(result.recordsDollarized, true);
   assert.equal(Math.round(result.periodValue), 12_500);
   assert.ok(result.bulkHours < 300, `bulk hours were ${result.bulkHours}`);
 });
@@ -206,32 +207,68 @@ test("reports a scenario band and flags unverified record composition", async ()
     annualPxmInvestment: 31_000,
   });
 
-  // An export that labels almost no automation cannot support a claim that
-  // automated volume was removed.
+  // An export that labels almost no automation cannot support record dollarization.
   assert.equal(result.compositionUnverified, true);
+  assert.equal(result.recordsDollarized, false);
 
   const [conservative, expected, upper] = result.scenarios;
   assert.equal(conservative.label, "Conservative");
   assert.equal(expected.label, "Expected");
   assert.equal(upper.label, "Upper bound");
 
-  // Pi's audit band: 10% / 15s at the floor, 40% / 45s at the ceiling.
-  assert.equal(Math.round(conservative.realizationPercent), 10);
-  assert.equal(conservative.secondsPerRecord, 15);
-  assert.equal(Math.round(upper.realizationPercent), 40);
-  assert.equal(upper.secondsPerRecord, 45);
+  assert.equal(conservative.periodValue, 0);
+  assert.equal(expected.periodValue, 0);
+  assert.equal(upper.periodValue, 0);
+});
 
-  assert.ok(conservative.periodValue < expected.periodValue);
-  assert.ok(expected.periodValue < upper.periodValue);
-  assert.equal(Math.round(expected.periodValue), Math.round(result.periodValue));
+test("dollarizes only human-task categories when record composition is unverified", async () => {
+  const model = await loadCsModel();
+  const rows = model.parseActivitySheets([
+    {
+      name: "Updates",
+      rows: [
+        ["Date", "User", "Hostname", "Count", "Action"],
+        ["7/10/2026", "Peter Jakl", "helmethouse", 253_883, "Update"],
+      ],
+    },
+    {
+      name: "File Downloads",
+      rows: [
+        ["Date", "User", "Hostname", "Count", "Action"],
+        ["7/6/2026", "Grant Wheeler", "helmethouse", 1964, "File Download"],
+      ],
+    },
+    {
+      name: "Syndications",
+      rows: [
+        ["Date", "User", "Hostname", "Count", "Action"],
+        ["8/1/2026", "Jordan Hale", "helmethouse", 57, "Publish To Channel"],
+      ],
+    },
+  ]);
+  const summary = model.summarizeActivity(rows, {
+    start: new Date("2026-07-04T00:00:00"),
+    end: new Date("2026-08-31T00:00:00"),
+  });
+  const result = model.calculateCsValue(summary, {
+    hourlyRate: 50,
+    contentMinutesSaved: 9,
+    bulkSecondsSaved: 15,
+    bulkRealizationPercent: 10,
+    realizationMeasured: false,
+    realizationSampleNote: "",
+    hourlyRateConfirmed: false,
+    assetMinutesSaved: 2,
+    syndicationMinutesSaved: 7.5,
+    annualPxmInvestment: 31_000,
+  });
 
-  for (const scenario of result.scenarios) {
-    assert.ok(scenario.paybackMonths === null || scenario.paybackMonths > 0);
-    assert.equal(
-      Math.round(scenario.annualizedValue),
-      Math.round(scenario.periodValue * (365 / summary.spanDays)),
-    );
-  }
+  assert.equal(result.recordsDollarized, false);
+  assert.equal(result.bulkValue, 0);
+  assert.equal(Math.round(result.assetValue), 3_273);
+  assert.equal(Math.round(result.syndicationValue), 356);
+  assert.ok(result.periodValue < 5_000);
+  assert.ok(result.scenarios[0].periodValue < result.periodCost);
 });
 
 test("excludes automated downloads and shares from dollar totals", async () => {

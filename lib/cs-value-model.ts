@@ -137,6 +137,9 @@ export type CsValueResult = {
    */
   compositionUnverified: boolean;
   automationSharePercent: number;
+  /** False when the export cannot separate manual record edits from bulk/API volume. */
+  recordsDollarized: boolean;
+  recordMaintenanceCount: number;
 };
 
 const EMPTY_CATEGORIES: Record<CsActivityCategory, number> = {
@@ -531,14 +534,24 @@ export function calculateCsValue(
   activity: CsActivitySummary,
   assumptions: CsValueAssumptions,
 ): CsValueResult {
+  const recordVolume = activity.byCategory.bulk + activity.byCategory.automation;
+  const automationSharePercent =
+    recordVolume > 0 ? (activity.byCategory.automation / recordVolume) * 100 : 0;
+  const compositionUnverified = recordVolume >= 10_000 && automationSharePercent < 1;
+  // When the export labels almost no automation, record volume is throughput
+  // evidence only — not labor dollars — until a sampled audit proves composition.
+  const recordsDollarized = !compositionUnverified;
+
   const contentHours =
     (activity.byCategory.content * assumptions.contentMinutesSaved) / 60;
 
-  // Human record volume only. API / System Generated throughput is excluded
-  // from hours and dollars so the headline number stays defensible in a QBR.
   const realization = Math.min(Math.max(assumptions.bulkRealizationPercent, 0), 100) / 100;
-  const billableBulkCount = activity.byCategory.bulk * realization;
-  const bulkHours = (billableBulkCount * assumptions.bulkSecondsSaved) / 3600;
+  const billableBulkCount = recordsDollarized
+    ? activity.byCategory.bulk * realization
+    : 0;
+  const bulkHours = recordsDollarized
+    ? (billableBulkCount * assumptions.bulkSecondsSaved) / 3600
+    : 0;
 
   const assetHours = (activity.byCategory.asset * assumptions.assetMinutesSaved) / 60;
   const syndicationHours =
@@ -574,8 +587,12 @@ export function calculateCsValue(
       assumptions.syndicationMinutesSaved * shape.minutes;
     const scenarioContentMinutes = assumptions.contentMinutesSaved * shape.minutes;
 
+    const bulkHoursForScenario = recordsDollarized
+      ? (activity.byCategory.bulk * scenarioRealization * scenarioSeconds) / 3600
+      : 0;
+
     const scenarioHours =
-      (activity.byCategory.bulk * scenarioRealization * scenarioSeconds) / 3600 +
+      bulkHoursForScenario +
       (activity.byCategory.content * scenarioContentMinutes) / 60 +
       (activity.byCategory.asset * scenarioAssetMinutes) / 60 +
       (activity.byCategory.syndication * scenarioSyndicationMinutes) / 60;
@@ -601,10 +618,6 @@ export function calculateCsValue(
     };
   });
 
-  const recordVolume = activity.byCategory.bulk + activity.byCategory.automation;
-  const automationSharePercent =
-    recordVolume > 0 ? (activity.byCategory.automation / recordVolume) * 100 : 0;
-
   return {
     contentHours,
     bulkHours,
@@ -628,7 +641,9 @@ export function calculateCsValue(
     fteCeiling,
     overCapacity: fteCeiling > 0 && fteEquivalent > fteCeiling,
     scenarios,
-    compositionUnverified: recordVolume >= 10_000 && automationSharePercent < 1,
+    compositionUnverified,
     automationSharePercent,
+    recordsDollarized,
+    recordMaintenanceCount: activity.byCategory.bulk,
   };
 }
